@@ -1,6 +1,6 @@
 package:
-    name: pyg-mongo
-    version: 0.0.11
+    name: pyg-cell
+    version: 0.0.1
 
 source:
     path: ../src
@@ -12,18 +12,14 @@ build:
 
 requirements:
     build:
-        - pyg-base          >=0.0.3
-        - pymongo           >=3.11.0
-        - dnspython         >=2.1.0
-        - sqlalchemy        >=1.4
-        - sqlalchemy-utils  >=0.38.2
+        - pyg-base          >=0.0.17
+        - pyg-mongo         >=0.0.11
+        - pyg-sql           >=0.0.1
     run:
-        - pyg-base          >=0.0.3
-        - pymongo           >=3.11.0
-        - dnspython         >=2.1.0
-        - sqlalchemy        >=1.4
-        - sqlalchemy-utils  >=0.38.2
+        - pyg-base          >=0.0.17
+        - pyg-mongo         >=0.0.11
+        - pyg-sql           >=0.0.1
         
 about:
-    home: https://github.com/gityoav/pyg-mongo
+    home: https://github.com/gityoav/pyg-cell
     license: GNU
