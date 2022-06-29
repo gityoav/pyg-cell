@@ -1,0 +1,29 @@
+package:
+    name: pyg-mongo
+    version: 0.0.11
+
+source:
+    path: ../src
+	
+build:
+    include_recipe: False
+    number: 0
+    noarch: python
+
+requirements:
+    build:
+        - pyg-base          >=0.0.3
+        - pymongo           >=3.11.0
+        - dnspython         >=2.1.0
+        - sqlalchemy        >=1.4
+        - sqlalchemy-utils  >=0.38.2
+    run:
+        - pyg-base          >=0.0.3
+        - pymongo           >=3.11.0
+        - dnspython         >=2.1.0
+        - sqlalchemy        >=1.4
+        - sqlalchemy-utils  >=0.38.2
+        
+about:
+    home: https://github.com/gityoav/pyg-mongo
+    license: GNU
