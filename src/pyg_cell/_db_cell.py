@@ -1,12 +1,13 @@
 from pyg_base import cell, is_date, ulist, logger, cell_clear, as_list, get_DAG, get_GAD, get_cache, descendants
 from pyg_base import cell_item, Dict
-from pyg_mongo._q import _deleted, _id
-from pyg_mongo import q, mongo_base_reader, mongo_table
-from pyg_sql import get_sql_table, sql_table
 from functools import partial
-
+from pyg_cell._types import _get_db, _get_qq, DBS, QQ
 # import networkx as nx
 
+
+
+_deleted = 'deleted'
+_id = '_id'
 _pk = 'pk'
 _db = 'db'
 _updated = 'updated'
@@ -83,18 +84,6 @@ def db_load(value, mode = 0):
         return type(value)(**{k : db_load(v, mode = mode) for k, v in value.items()})
     else:
         return value
-    
-
-def _qq(qq, table):
-    if qq is None:
-        if isinstance(table, mongo_base_reader):
-            qq = q
-        elif isinstance(table, sql_table):
-            qq = table.table.c
-        else:
-            raise ValueError('need to specify query mechanism')
-    else:
-        return qq
         
 def _load_asof(table, kwargs, deleted, qq = None):  
     t = table.inc(kwargs)
@@ -107,7 +96,7 @@ def _load_asof(table, kwargs, deleted, qq = None):
             raise ValueError('multiple cells found matching %s'%kwargs)
         return live[0]
     else:  
-        qq = _qq(qq, table)
+        qq = _get_qq(qq, table)
         past = t.deleted if deleted is True else t.deleted.inc(qq['deleted'] > deleted) ## it is possible to have cells with deleted in self
         p = len(past)
         if p == 1:
@@ -483,11 +472,12 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
         address = kwargs_address = tuple([(key, kwargs.get(key)) for key in pk]) 
    
     if db is not None and table is not None:
-        if server is None:
-            t = mongo_table(db = db, table = table, url = url, pk = pk)
-            qq = q
-        else:
-            t = get_sql_table(db = db, table = table, server = server, pk = pk, doc = doc or _doc)
+        mode = _get_db(url, server)
+        if mode == 'mongo':
+            t = DBS[mode](db = db, table = table, url = url or server, pk = pk)
+            qq = QQ[mode]
+        elif mode == 'sql':
+            t = DBS[mode](db = db, table = table, server = server or url, pk = pk, doc = doc or _doc)
             qq = t.table.c
         address = t.address + kwargs_address
         if _from_memory and deleted in (None, False): # we want the standard cell
@@ -554,12 +544,13 @@ def get_docs(table = None, db = None, url = None, server = None, pk = None, cell
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
 
     """
-    if server is None:
-        t = mongo_table(db = db, table = table, url = url, pk = pk).inc(**kwargs)
-    else:
-        t = get_sql_table(db = db, table = table, server = server, pk = pk, doc = doc or _doc).inc(**kwargs)        
+    mode = _get_db(url, server)
+    if mode == 'mongo':
+        t = DBS[mode](db = db, table = table, url = url or server, pk = pk).inc(**kwargs)
+    elif mode == 'sql':
+        t = DBS[mode](db = db, table = table, server = server or url, pk = pk, doc = doc or _doc).inc(**kwargs)                
     return t.docs(list(kwargs.keys()))
-    
+
     
 def get_cell(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
     """

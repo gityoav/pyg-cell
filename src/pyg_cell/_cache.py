@@ -1,7 +1,6 @@
 from pyg_base import wrapper, getargs, as_list, getcallargs, cell_item, logger
-from pyg_mongo import mongo_table
-from pyg_sql import get_sql_table
 from pyg_cell._periodic_cell import periodic_cell
+from pyg_cell._types import _get_db, DBS
 from functools import partial
 
 
@@ -101,11 +100,13 @@ class cell_cache(wrapper):
     
     @property
     def _db(self):
-        if self.server is None:    
-            return partial(mongo_table, table = self._table, db = self.db, pk = self._pk, url = self.url, writer = self.writer)
+        mode = _get_db(self.url, self.server)
+        if mode == 'mongo':    
+            return partial(DBS[mode], table = self._table, db = self.db, pk = self._pk, url = self.url or self.server, writer = self.writer)
+        elif mode == 'sql':
+            return partial(DBS[mode], table = self._table, db = self.db, pk = self._pk, server = self.server or self.url, writer = self.writer)
         else:
-            return partial(get_sql_table, table = self._table, db = self.db, pk = self._pk, server = self.server, writer = self.writer)
-            
+            raise ValueError('only sql or mongo are supported')            
     
     def _external_kwargs(self, args, kwargs):
         external = self._external

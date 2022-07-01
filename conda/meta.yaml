@@ -1,6 +1,6 @@
 package:
     name: pyg-cell
-    version: 0.0.1
+    version: 0.0.2
 
 source:
     path: ../src
@@ -13,12 +13,8 @@ build:
 requirements:
     build:
         - pyg-base          >=0.0.17
-        - pyg-mongo         >=0.0.11
-        - pyg-sql           >=0.0.1
     run:
         - pyg-base          >=0.0.17
-        - pyg-mongo         >=0.0.11
-        - pyg-sql           >=0.0.1
         
 about:
     home: https://github.com/gityoav/pyg-cell

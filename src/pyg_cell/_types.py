@@ -1,31 +1,45 @@
-from pyg_base import passthru, decode, is_str, as_list
-import pymongo as pym
-from pyg_mongo._encoders import csv_write, parquet_write, _csv, _parquet, encode
-from functools import partial
+## Here is where we resolve SQL vs Mongo issues
 
-__all__ = ['is_collection', 'is_cursor', 'as_collection']
+DBS = {}
+QQ = {}
+CLSS = {}
 
-# def is_client(value):
-#     """is the value a pymongo.MongoClient"""
-#     return isinstance(value, pym.mongo_client.MongoClient)
+try:
+    from pyg_mongo import q, mongo_base_reader, mongo_table
+    DBS['mongo'] = mongo_table
+    QQ['mongo'] = q
+    CLSS['mongo'] = mongo_base_reader
+except Exception:
+    pass
 
-# def is_db(value):
-#     """is the value a pymongo.Database"""
-#     return isinstance(value, pym.database.Database)
+try:
+    from pyg_sql import sql_cursor, sql_table
+    DBS['sql'] = sql_table
+    CLSS['sql'] = sql_cursor
+except Exception:
+    pass
 
-def is_collection(value):
-    """ is the value a pymongo.Collection (equivalent of a table)"""
-    return isinstance(value, (pym.collection.Collection))
+if len(DBS) == 0:
+    raise ValueError('pyg-cell can work with either/both of: pyg-sql and/or pyg-mongo but we need at least ONE of them. Please install either packages to proceed')
 
-def is_cursor(value):
-    """ is the value a pymongo.Cursor"""
-    return isinstance(value, (pym.cursor.Cursor))
-
-
-def as_collection(collection):
-    if is_collection(collection):
-        return collection
-    elif is_cursor(collection):
-        return collection.collection
+def _get_db(url, server):
+    if 'mongo' not in DBS:
+        return 'sql'
+    elif 'sql' not in DBS:
+        return 'mongo'
+    elif server is None:
+        return 'mongo'
+    else:
+        return 'sql'
     
-
+    
+def _get_qq(qq, table):
+    if qq is None:
+        if 'mongo' in CLSS and isinstance(table, CLSS['mongo']):
+            qq = QQ['mongo']
+        elif 'sql' in CLSS and isinstance(table, CLSS['sql']):
+            qq = table.table.c
+        else:
+            raise ValueError('need to specify query mechanism')
+    else:
+        return qq
