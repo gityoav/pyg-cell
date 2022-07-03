@@ -121,10 +121,13 @@ class cell_cache(wrapper):
     
     def wrapped(self, *args, **kwargs):
         db = self._db
-        go = kwargs.pop('go',0)
-        mode = kwargs.pop('mode',0)
         external_kwargs = self._external_kwargs(args, kwargs)
+        go = external_kwargs.pop('go',0)
+        mode = external_kwargs.pop('mode',0)
         res = self.cell(self.function, db = db, **external_kwargs).load(mode = mode)
+        for key in ['go', 'mode']:
+            if key in res:
+                del res[key]
         try:
             res = res.go(go = go)
         except Exception:
