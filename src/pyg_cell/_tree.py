@@ -31,7 +31,16 @@ def _doc_write(doc, writer, tree):
     tree_setitem(tree, nodes, doc)
     
 
-def cell_tree(docs = None, tree = None, skip = True, mappers = None):
+def _trim_all(tree):
+    if isinstance(tree, dict):
+        if len(tree) == 1:
+            return _trim_all(list(tree.values())[0])
+        else:
+            return type(tree)({k: _trim_all(v) for k,v in tree.items()})
+    else:
+        return tree
+    
+def cell_tree(docs = None, tree = None, skip = True, mappers = None, trim = 'all'):
     ## This creates a graph based on the document primary keys
     """
     from pyg import  * 
@@ -51,12 +60,14 @@ def cell_tree(docs = None, tree = None, skip = True, mappers = None):
     really_missing = {}
     mappers = mappers or {}
     writers = {}
-    tree = tree or dictattr()
+    if tree is None:
+        tree = dictattr()
     if docs is None:
         docs = get_cache()['GRAPH']
     if isinstance(docs, list):
         docs = {doc._address : doc for doc in docs}
     for address, doc in docs.items():
+        pass
         key = _doc_key(doc, address)
         if key in mappers:
             writer = mappers[key]
@@ -80,8 +91,11 @@ def cell_tree(docs = None, tree = None, skip = True, mappers = None):
         else:
             writer = writers[key]
             _doc_write(doc, writer, tree)
-    while isinstance(tree, dict) and len(tree) == 1:
-        tree = list(tree.values())[0]
+    if trim == 'leading':
+        while isinstance(tree, dict) and len(tree) == 1:
+            tree = list(tree.values())[0]
+    elif trim == 'all':
+        tree = _trim_all(tree)
     if really_missing:
         print('we were not able to map these keys into a logical place within the graph', really_missing.keys())
         print('these got mapped:\n', tree_repr(writers))
