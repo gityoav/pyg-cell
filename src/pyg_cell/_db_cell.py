@@ -1,9 +1,13 @@
 from pyg_base import cell, is_date, ulist, logger, cell_clear, as_list, get_DAG, get_GAD, get_cache, descendants
-from pyg_base import cell_item, Dict
+from pyg_base import cell_item, Dict, cell_output
+from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv
+from pyg_npy import pd_read_npy
 from functools import partial
 from pyg_cell._types import _get_db, _get_qq, DBS, QQ
 # import networkx as nx
+import os
 
+_readers = dict(parquet = pd_read_parquet, pickle = pickle_load, npy = pd_read_npy, npa = pd_read_npy, csv = pd_read_csv)
 
 
 _deleted = 'deleted'
@@ -325,7 +329,7 @@ class db_cell(cell):
                     if mode in (1, True):
                         raise ValueError('no cells found matching %s'%kwargs)
                     else:
-                        return self         
+                        return self.load_output()
         if address in graph:
             saved = graph[address] 
             self_updated = self.get(_updated)
@@ -339,6 +343,25 @@ class db_cell(cell):
             update = (saved / None) - excluded_keys
             self.update(update)
         return self        
+
+    def load_output(self):
+        """
+        We may save the cell data on file system rather than in the database. 
+        This allows us to load some of the data even if the database itself has been wiped clean.
+        This does not support a full data reload at the moment, but if the cells outputs are simple dataframes, then cell.load_output will reconstruct it. 
+        
+        """
+        root = cell_root(self)
+        if root is None:
+            return self
+        path = root_path(self, root)
+        fmt = path.split('.')[-1].lower()
+        n = len(fmt) + 1
+        for output in cell_output(self):
+            filename = path[:-n] + '/%s'%output + path[-n:]
+            if os.path.exists(filename):
+                self[output] = _readers[fmt](filename)
+        return self
 
     def push(self):        
         me = self._address

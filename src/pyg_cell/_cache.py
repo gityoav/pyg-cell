@@ -73,7 +73,10 @@ class cell_cache(wrapper):
     """
     def __init__(self, function = None, db = 'cache', table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
         cell_kwargs  = cell_kwargs or {}
-        super(cell_cache, self).__init__(function = function, pk = pk, db = db, table = table, url = url, server = server, cell = cell, writer = writer, cell_kwargs = cell_kwargs, external = external)
+        db_kwargs = dict(pk = pk, db = db, table = table, url = url, server = server, writer = writer)
+        if isinstance(db, partial):
+            db_kwargs.update(db.keywords)
+        super(cell_cache, self).__init__(function = function, cell = cell, cell_kwargs = cell_kwargs, external = external, **db_kwargs)
         if hasattr(function, 'output'):
             self.output = function.output
 
