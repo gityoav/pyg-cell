@@ -1,5 +1,5 @@
 from pyg_base import cell, is_date, ulist, logger, cell_clear, as_list, get_DAG, get_GAD, get_cache, descendants
-from pyg_base import cell_item, Dict, cell_output
+from pyg_base import cell_item, Dict, cell_output, dictable
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv
 from pyg_npy import pd_read_npy
 from functools import partial
@@ -609,8 +609,26 @@ def get_cell(table = None, db = None, url = None, server = None, deleted = None,
     >>> assert get_cell('test','test', surname = 'brown').name == 'bob'
     """
     _from_memory = kwargs.pop('_from_memory', True)
-    return _get_cell(table = table, db = db, url = url, server = server, deleted = deleted, _from_memory = _from_memory, doc = doc, **kwargs)
-
+    params = dict(table = table, db = db, url = url, server = server, deleted = deleted)
+    params.update(kwargs)
+    multiples = {k : v for k, v in params.items() if isinstance(v, list)}
+    if len(multiples) == 0:
+        return _get_cell(_from_memory = _from_memory, doc = doc, **params)
+    elif len(multiples) == 1:
+        res = []
+        for key, values in multiples.items():
+            for value in values:
+                params.update({key : value})
+                res.append(_get_cell(_from_memory = _from_memory, doc = doc, **params))
+        return res
+    else:
+        res = dictable(params)
+        docs = []
+        for row in res:
+            params.update(row)
+            docs.append(_get_cell(_from_memory = _from_memory, doc = doc, **params))
+        res[doc or _doc] = docs
+        return res
 
 def get_data(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
     """
@@ -646,8 +664,13 @@ def get_data(table = None, db = None, url = None, server = None, deleted = None,
     >>> brown = db_cell(db = people, name = 'bob', surname = 'brown', age = 39).save()
     >>> assert get_data('test','test', surname = 'brown') is None
         
-    """    
-    return cell_item(get_cell(table, db = db, url = url, server = server, deleted = deleted, doc = doc, **kwargs), key = 'data')
+    """  
+    cells = get_cell(table, db = db, url = url, server = server, deleted = deleted, doc = doc, **kwargs)
+    if isinstance(cells, dictable):
+        cells[doc or _doc] = cell_item(cells[doc or _doc], key = 'data')
+        return cells
+    else:
+        return cell_item(cells, key = 'data')
 
 def load_data(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
     """
