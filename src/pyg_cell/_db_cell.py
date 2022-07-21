@@ -1,13 +1,17 @@
 from pyg_base import cell, is_date, ulist, logger, cell_clear, as_list, get_DAG, get_GAD, get_cache, descendants
 from pyg_base import cell_item, Dict, cell_output, dictable
-from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv
+from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decoded
 from pyg_npy import pd_read_npy
 from functools import partial
 from pyg_cell._types import _get_db, _get_qq, DBS, QQ
 # import networkx as nx
 import os
 
-_readers = dict(parquet = pd_read_parquet, pickle = pickle_load, npy = pd_read_npy, npa = pd_read_npy, csv = pd_read_csv)
+_readers = dict(parquet = pd_read_parquet, 
+                pickle = pickle_load, 
+                npy = pd_read_npy, 
+                csv = pd_read_csv,
+                dictable = dictable_decoded)
 
 
 _deleted = 'deleted'
@@ -283,7 +287,7 @@ class db_cell(cell):
         mode : int , dataetime, optional
             if -1, then does not load and clears the GRAPH
             if 0, then will load from database if found. If not found, will return original document
-            if 1, then will throw an exception if no document is found in the database
+            if 1, then will load, if doc not found, data from files (equivalent to db_cell.load_output)
             if mode is a date, will return the version alive at that date 
             The default is 0.
             
@@ -327,9 +331,10 @@ class db_cell(cell):
                     graph[address] = _load_asof(table = db, kwargs = kwargs, deleted = False, qq = None)
                 except Exception:
                     if mode in (1, True):
-                        raise ValueError('no cells found matching %s'%kwargs)
-                    else:
                         return self.load_output()
+                    else:
+                        return self
+
         if address in graph:
             saved = graph[address] 
             self_updated = self.get(_updated)
@@ -358,9 +363,10 @@ class db_cell(cell):
         fmt = path.split('.')[-1].lower()
         n = len(fmt) + 1
         for output in cell_output(self):
-            filename = path[:-n] + '/%s'%output + path[-n:]
-            if os.path.exists(filename):
-                self[output] = _readers[fmt](filename)
+            for suffix, reader in _readers.items():
+                filename = path[:-n] + '/%s.%s'%(output, suffix)            
+                if os.path.exists(filename):
+                    self[output] = reader(filename)
         return self
 
     def push(self):        
