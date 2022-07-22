@@ -1,4 +1,5 @@
-from pyg_base import wrapper, getargs, as_list, getcallargs, cell_item, logger
+from pyg_base import wrapper, getargs, as_list, getcallargs, logger
+from pyg_cell._cell import cell_item
 from pyg_cell._periodic_cell import periodic_cell
 from pyg_cell._types import _get_db, DBS
 from functools import partial

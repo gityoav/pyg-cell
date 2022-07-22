@@ -1,6 +1,5 @@
 from pyg_mongo import mongo_table
 from pyg_base import dictable, Dict, passthru
-from pyg_base import * 
 import pytest
 
 def test_mongo_reader_allows_passthru():
