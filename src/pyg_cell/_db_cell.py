@@ -371,10 +371,10 @@ class db_cell(cell):
                     self[output] = reader(filename)
         return self
 
-    def push(self):        
+    def push(self, go = 1):        
         me = self._address
         res = self.go() # run me on my own as I am not part of the push
-        cell_push(me, exc = 0)
+        cell_push(me, exc = 0, go = go)
         UPDATED = get_cache('UPDATED')
         if me in UPDATED:
             del UPDATED[me]
@@ -425,14 +425,14 @@ class db_cell(cell):
             return self + res
 
 
-def cell_push(nodes = None, exc = None):
+def cell_push(nodes = None, exc = None, go = 1):
     UPDATED = get_cache('UPDATED')
     GRAPH = get_cache('GRAPH')
     if nodes is None:
         nodes = UPDATED.keys()
     children = [child for child in descendants(get_DAG(), nodes, exc = exc) if child is not None]
     for child in children:
-        GRAPH[child] = (GRAPH[child] if child in GRAPH else get_cell(**dict(child))).go()
+        GRAPH[child] = (GRAPH[child] if child in GRAPH else get_cell(**dict(child))).go(go = go)
     for child in children:
         del UPDATED[child]
 

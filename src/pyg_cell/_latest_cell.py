@@ -1,10 +1,10 @@
 from pyg_cell._cell import cell_inputs
-from pyg_cell._db_cell import db_cell
+from pyg_cell._periodic_cell import periodic_cell
 
 __all__ = ['latest_cell']
 _latest = 'latest'
 
-class latest_cell(db_cell):
+class latest_cell(periodic_cell):
     """
     latest_cell 
     - inherits from periodice_cell
@@ -36,8 +36,6 @@ class latest_cell(db_cell):
         inputs = cell_inputs(self._inputs)
         for i in inputs:
             i = i.load()
-            if i.run():
-                return True
             i_latest = i._latest
             if i_latest is not None and i_latest > latest:
                 return True

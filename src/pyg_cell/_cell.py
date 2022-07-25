@@ -12,7 +12,7 @@
 # from pyg_base._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort
 
 from pyg_base import as_list, get_cache, dictattr, Dict, tree_getitem, getargspec, getargs, getcallargs, \
-                    loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts
+                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
 
@@ -830,7 +830,7 @@ class cell(dictattr):
     def pull(self):
         """
         pull works together with push to ensure that if an upstream cell has updated, downward cells *who register to pull data* gets UPDATED
-        
+        pull does not actually calculate any cell, it simply registers the parents of a cell in the DAG
         
         :Example:
         ---------
@@ -841,10 +841,6 @@ class cell(dictattr):
         >>> e = cell(add_, a = c, b = d, pk = 'key', key = 'e')()
         >>> f = cell(add_, a = e, b = d, pk = 'key', key = 'f')()
                 
-        Parameters
-        ----------
-        inputs : TYPE, optional
-            DESCRIPTION. The default is True.
 
         Returns
         -------
@@ -870,12 +866,12 @@ class cell(dictattr):
         _GAD[me] = inputs
         return self
 
-    def push(self):
+    def push(self, go = 1):
         me = self._address
         res = self.go()
         generations = topological_sort(get_DAG(), [me])['gen2node']
         for i, children in sorted(generations.items())[1:]: # we skop the first generation... we just calculated it
-            GRAPH.update({child : GRAPH[child].go() for child in children})            
+            GRAPH.update({child : GRAPH[child].go(go = go) for child in children})            
             for child in children:
                 del UPDATED[child]
         if me in UPDATED:
@@ -915,8 +911,49 @@ class cell(dictattr):
         res = res(**bind)
         res[_pk] = pk
         return self + res
-    
 
+
+class updated_cell(cell):
+    """ 
+    An updated_cell will only update its "updated" and will only save itself, once the value in its output has changed
+    """
+    def go(self, go = 1, mode = 0, **kwargs):
+        """
+        calculate and then save the new value IF DIFFERENT TO PREVIOUS value
+        
+        :Example:
+        --------
+        >>> from pyg import * ; import time
+        >>> a = cell(data = 1)
+        >>> b = updated_cell(add_, a = a, b = 3)()
+        >>> c = cell(add_, a = a, b = 30)()
+
+        >>> time.sleep(1)
+
+        >>> b2 = b.go()
+        >>> c2 = c.go()
+        >>> assert c2.updated > c.updated
+        >>> assert b2.updated == b.updated
+        """
+        res = (self + kwargs)
+        if res.run() or (is_date(go) and self.get(_updated, go) <= go)  or (is_num(go) and go!=0):
+            old = {key : res[key] for key in cell_output(res) if key in res}
+            res = res._go(go = go, mode = mode)
+            new = {key : res[key] for key in cell_output(res) if key in res}
+            if eq(new, old):
+                return res
+            address = res._address
+            if address in UPDATED:
+                res[_updated] = UPDATED[address] 
+            else: 
+                res[_updated] = datetime.datetime.now()
+            return res.save()
+        else:
+            address = res._address
+            if address:
+                GRAPH[address] = res
+            return res
+        
 def cell_inputs(value, types = cell):
     """
     returns a list of inputs for a cell of type 'types'
