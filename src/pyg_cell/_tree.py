@@ -25,8 +25,8 @@ def _doc_key(doc, address = None):
         return _address_key(doc._address)
 
 def _doc_write(doc, writer, tree):
-    path = root_path(doc, writer).lower().replace(':', '').replace(' ', '_')
-    nodes = path.split('/')
+    path = root_path(doc, writer).lower().replace(':', '').replace(' ', '_').replace('+','_')
+    nodes = [p.split('?')[0] for p in path.split('/') if len(p)]
     nodes[-1] = '.'.join(nodes[-1].split('.')[:-1])
     tree_setitem(tree, nodes, doc)
     
