@@ -1,7 +1,7 @@
 from pyg_base import wrapper, getargs, as_list, getcallargs, logger
 from pyg_cell._cell import cell_item
 from pyg_cell._periodic_cell import periodic_cell
-from pyg_cell._types import _get_db, DBS
+from pyg_cell._types import _get_mode, DBS
 from functools import partial
 
 
@@ -70,11 +70,18 @@ class cell_cache(wrapper):
     >>>     return a+b
     >>> f(1,2, key = 'key', go = 1)
 
-    
+
+    >>> from pyg import * 
+    >>> @cell_cache(db = 'test', table = 'tbl', schema = 'bbg', pk = ['ticker', 'field'], 
+                    writer = 'mss://true/db_name/schma.tabl_name/%ticker/%field.sql')
+    >>> def bdh(ticker, field):
+    >>>     return pd.Series(np.random.normal(100), drange(-99))
+    sql_binary_store
+    >>> ts = bdh('a', 'e')
     """
-    def __init__(self, function = None, db = 'cache', table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
+    def __init__(self, function = None, db = 'cache', schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
         cell_kwargs  = cell_kwargs or {}
-        db_kwargs = dict(pk = pk, db = db, table = table, url = url, server = server, writer = writer)
+        db_kwargs = dict(pk = pk, db = db, table = table, schema = schema, url = url, server = server, writer = writer)
         if isinstance(db, partial):
             db_kwargs.update(db.keywords)
         super(cell_cache, self).__init__(function = function, cell = cell, cell_kwargs = cell_kwargs, external = external, **db_kwargs)
@@ -104,11 +111,11 @@ class cell_cache(wrapper):
     
     @property
     def _db(self):
-        mode = _get_db(self.url, self.server)
+        mode = _get_mode(self.url, self.server, self.schema)
         if mode == 'mongo':    
             return partial(DBS[mode], table = self._table, db = self.db, pk = self._pk, url = self.url or self.server, writer = self.writer)
         elif mode == 'sql':
-            return partial(DBS[mode], table = self._table, db = self.db, pk = self._pk, server = self.server or self.url, writer = self.writer)
+            return partial(DBS[mode], table = self._table, schema = self.schema, db = self.db, pk = self._pk, server = self.server or self.url, writer = self.writer, doc = True)
         else:
             raise ValueError('only sql or mongo are supported')            
     

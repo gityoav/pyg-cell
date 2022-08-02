@@ -22,11 +22,13 @@ except Exception:
 if len(DBS) == 0:
     raise ValueError('pyg-cell can work with either/both of: pyg-sql and/or pyg-mongo but we need at least ONE of them. Please install either packages to proceed')
 
-def _get_db(url, server):
+def _get_mode(url, server, schema = None):
     if 'mongo' not in DBS:
         return 'sql'
     elif 'sql' not in DBS:
         return 'mongo'
+    elif schema is not None:
+        return 'sql'
     elif server is None:
         return 'mongo'
     else:

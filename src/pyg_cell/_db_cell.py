@@ -1,7 +1,7 @@
 from pyg_base import is_date, ulist, logger, as_list, get_cache, Dict, dictable
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decoded
 from pyg_npy import pd_read_npy
-from pyg_cell._types import _get_db, _get_qq, DBS, QQ
+from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
 from pyg_cell._cell import cell, cell_clear, cell_item, cell_output
 from pyg_cell._dag import get_DAG, get_GAD, descendants
 
@@ -501,14 +501,15 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
     else:
         pk = sorted(as_list(pk))
         address = kwargs_address = tuple([(key, kwargs.get(key)) for key in pk]) 
-   
-    if db is not None and table is not None:
-        mode = _get_db(url, server)
+    
+    schema = kwargs.pop('schema', None)
+    mode = _get_mode(url, server, schema = schema)    
+    if table is not None and (db is not None or mode == 'sql'):
         if mode == 'mongo':
             t = DBS[mode](db = db, table = table, url = url or server, pk = pk)
             qq = QQ[mode]
         elif mode == 'sql':
-            t = DBS[mode](db = db, table = table, server = server or url, pk = pk, doc = doc or _doc)
+            t = DBS[mode](db = db, table = table, server = server or url, schema = schema, pk = pk, doc = doc or _doc)
             qq = t.table.c
         address = t.address + kwargs_address
         if _from_memory and deleted in (None, False): # we want the standard cell
@@ -575,11 +576,12 @@ def get_docs(table = None, db = None, url = None, server = None, pk = None, cell
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
 
     """
-    mode = _get_db(url, server)
+    schema = kwargs.pop('schema', None)
+    mode = _get_mode(url, server, schema = schema)
     if mode == 'mongo':
         t = DBS[mode](db = db, table = table, url = url or server, pk = pk).inc(**kwargs)
     elif mode == 'sql':
-        t = DBS[mode](db = db, table = table, server = server or url, pk = pk, doc = doc or _doc).inc(**kwargs)                
+        t = DBS[mode](db = db, table = table, schema = schema, server = server or url, pk = pk, doc = doc or _doc).inc(**kwargs)                
     return t.docs(list(kwargs.keys()))
 
     
