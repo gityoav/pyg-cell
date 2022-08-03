@@ -1,5 +1,5 @@
 from pyg_base import is_date, ulist, logger, as_list, get_cache, Dict, dictable
-from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decoded
+from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
 from pyg_cell._cell import cell, cell_clear, cell_item, cell_output
@@ -13,7 +13,7 @@ _readers = dict(parquet = pd_read_parquet,
                 pickle = pickle_load, 
                 npy = pd_read_npy, 
                 csv = pd_read_csv,
-                dictable = dictable_decoded)
+                dictable = dictable_decode)
 
 
 _deleted = 'deleted'
