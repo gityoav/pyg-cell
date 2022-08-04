@@ -132,6 +132,14 @@ def _load_asof(table, kwargs, deleted, qq = None):
             else:
                 return history[0]
 
+import datetime
+def is_primitive(value):
+    if isinstance(value, (tuple, list)):
+        return min([is_primitive(v) for v in value], default = True)
+    elif isinstance(value, dict):
+        return min([is_primitive(v) for v in value.values()], default = True)
+    else:
+        return value is None or isinstance(value, (bool, str, int, float, datetime.datetime, datetime.date))
 
 class db_cell(cell):
     """
@@ -190,7 +198,10 @@ class db_cell(cell):
     def __init__(self, function = None, output = None, db = None, **kwargs):
         if db is not None:
             if not isinstance(db, partial):
-                raise ValueError('db must be a partial of a function like mongo_table initializing a mongo cursor')
+                raise ValueError('type of db is: %s while db must be a *partial* of a function like mongo_table initializing a mongo cursor' % type(db))
+            non_primitives = {key : value for key, value in db.keywords.items() if not is_primitive(value)}
+            if len(non_primitives):
+                raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
             super(db_cell, self).__init__(function = function, output = output, db = db, **kwargs)
         else:
             self[_db] = None
