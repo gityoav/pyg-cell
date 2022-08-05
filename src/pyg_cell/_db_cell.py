@@ -1,4 +1,4 @@
-from pyg_base import is_date, ulist, logger, as_list, get_cache, Dict, dictable
+from pyg_base import is_date, ulist, logger, is_str, as_list, get_cache, Dict, dictable
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
@@ -14,7 +14,11 @@ _readers = dict(parquet = pd_read_parquet,
                 npy = pd_read_npy, 
                 csv = pd_read_csv,
                 dictable = dictable_decode)
-
+try:
+    from pyg_sql import sql_loads
+    _readers['sql'] = sql_loads
+except Exception:
+    pass
 
 _deleted = 'deleted'
 _id = '_id'
@@ -380,6 +384,12 @@ class db_cell(cell):
                 filename = path[:-n] + '/%s.%s'%(output, suffix)            
                 if os.path.exists(filename):
                     self[output] = reader(filename)
+                elif suffix == 'sql' and is_str(self.writer) and self.writer.endswith('sql'):
+                    try:
+                        filename = path[:-n] + '/%s'%(output)            
+                        self[output] = reader(filename)
+                    except Exception:
+                        pass
         return self
 
     def push(self, go = 1):        
