@@ -1,4 +1,4 @@
-from pyg_base import wrapper, getargs, as_list, getcallargs, logger
+from pyg_base import wrapper, getargs, as_list, getcallargs, logger, cache
 from pyg_cell._cell import cell_item
 from pyg_cell._periodic_cell import periodic_cell
 from pyg_cell._types import _get_mode, DBS
@@ -149,6 +149,17 @@ class db_cache(cell_cache):
     def wrapped(self, *args, **kwargs):
         res = super(db_cache, self).wrapped(*args, **kwargs)
         return cell_item(res)
-            
 
-
+@cache
+def cell_cache_(function = None, db = 'cache', schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
+    return cell_cache(function = function, db = db, schema = schema, 
+                      table = table, url = url, server = server, pk = pk, 
+                      cell = cell, writer = writer, 
+                      cell_kwargs = cell_kwargs, external = external)
+ 
+@cache
+def db_cache_(function = None, db = 'cache', schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
+    return db_cache(function = function, db = db, schema = schema, 
+                      table = table, url = url, server = server, pk = pk, 
+                      cell = cell, writer = writer, 
+                      cell_kwargs = cell_kwargs, external = external)
