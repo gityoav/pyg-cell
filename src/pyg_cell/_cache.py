@@ -79,10 +79,12 @@ class cell_cache(wrapper):
     sql_binary_store
     >>> ts = bdh('a', 'e')
     """
-    def __init__(self, function = None, db = 'cache', schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
+    def __init__(self, function = None, db = None, schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
         cell_kwargs  = cell_kwargs or {}
-        db_kwargs = dict(pk = pk, db = db, table = table, schema = schema, url = url, server = server, writer = writer)
-        if isinstance(db, partial):
+        db_kwargs = dict(pk = pk, table = table, db = db, schema = schema, url = url, server = server, writer = writer)
+        if isinstance(table, partial):
+            db_kwargs.update(table.keywords)
+        elif isinstance(db, partial):
             db_kwargs.update(db.keywords)
         super(cell_cache, self).__init__(function = function, cell = cell, cell_kwargs = cell_kwargs, external = external, **db_kwargs)
         if hasattr(function, 'output'):
@@ -151,14 +153,14 @@ class db_cache(cell_cache):
         return cell_item(res)
 
 @cache
-def cell_cache_(function = None, db = 'cache', schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
+def cell_cache_(function = None, db = None, schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
     return cell_cache(function = function, db = db, schema = schema, 
                       table = table, url = url, server = server, pk = pk, 
                       cell = cell, writer = writer, 
                       cell_kwargs = cell_kwargs, external = external)
  
 @cache
-def db_cache_(function = None, db = 'cache', schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
+def db_cache_(function = None, db = None, schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
     return db_cache(function = function, db = db, schema = schema, 
                       table = table, url = url, server = server, pk = pk, 
                       cell = cell, writer = writer, 
