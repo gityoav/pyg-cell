@@ -238,7 +238,9 @@ class db_cell(cell):
         if self.get(_db) is None:
             return super(db_cell, self)._address
         db = self.db()
-        return db.address + tuple([(key, self.get(key)) for key in db._pk])
+        db_address = db.address
+        db_dict = dict(db_address)
+        return db_address + tuple([(key, self.get(key)) for key in db._pk if key not in db_dict])
 
 
     def _clear(self):
