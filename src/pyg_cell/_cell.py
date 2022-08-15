@@ -524,8 +524,6 @@ class cell(dictattr):
             if is_date(saved_updated) and (self_updated is None or self_updated < saved_updated):
                 output = {key: value for key, value in saved.items() if (key in [_updated] + self._output and value is not None) or key not in self}
                 self.update(output)
-        elif mode == 1:
-            raise ValueError('mode = 1 and yet %s not found in the GRAPH'%address)
         return self
             
     def __call__(self, go = 0, mode = 0, **kwargs):
@@ -692,6 +690,7 @@ class cell(dictattr):
             latests = [ts.index[-1] for ts in tss if len(ts)>0]
             c[_latest] = max(latests, default = None)
             if address:
+                address = self._address
                 GRAPH = get_cache('GRAPH')
                 UPDATED = get_cache('UPDATED')
                 UPDATED[address] = datetime.datetime.now()

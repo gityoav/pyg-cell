@@ -344,10 +344,12 @@ class db_cell(cell):
             return self
         if address not in graph: # we load from the database
             if is_date(mode):
-                graph[address] = _load_asof(db, kwargs, deleted = mode)
+                doc = _load_asof(db, kwargs, deleted = mode)
+                graph[doc._address] = doc
             else:
                 try:
-                    graph[address] = _load_asof(table = db, kwargs = kwargs, deleted = False, qq = None)
+                    doc = _load_asof(table = db, kwargs = kwargs, deleted = False, qq = None)
+                    graph[doc._address] = doc
                 except Exception:
                     if mode in (1, True):
                         return self.load_output()
@@ -537,8 +539,11 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
         address = t.address + kwargs_address
         if _from_memory and deleted in (None, False): # we want the standard cell
             if address not in GRAPH:
-                GRAPH[address] = _load_asof(t, kwargs, deleted, qq)
-            return GRAPH[address]
+                doc = _load_asof(t, kwargs, deleted, qq)
+                GRAPH[doc._address] = doc
+                return doc
+            else:
+                return GRAPH[address]
         else:
             return _load_asof(t, kwargs, deleted, qq) # must not overwrite live version. User wants a specific deleted version
     else:
