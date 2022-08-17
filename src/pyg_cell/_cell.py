@@ -552,7 +552,7 @@ class cell(dictattr):
 
     @property
     def fullargspec(self):
-        return None if self.function is None else getargspec(self.function) 
+        return None if self.function is None or not callable(self.function) else getargspec(self.function) 
     
     @property
     def _args(self):
@@ -576,8 +576,21 @@ class cell(dictattr):
         >>> assert c._inputs == {'a': 2} and c._args == ['a', 'b']
             
         """
-        args = self._args
-        return {key : self[key] for key in args if key in self}
+        spec = self.fullargspec
+        if spec is None:
+            return {}
+        res = {key : self[key] for key in spec.args + spec.kwonlyargs if key in self}
+        if spec.varargs and spec.varargs in self:
+            res[spec.varargs] = self[spec.varargs]
+        if spec.varkw and spec.varkw in self:
+            varkw = self[spec.varkw]
+            if not isinstance(varkw, dict):
+                raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
+            res.update(varkw)
+        return res
+
+        # args = self._args
+        # return {key : self[key] for key in args if key in self}
     
     
     @property
@@ -666,16 +679,29 @@ class cell(dictattr):
         """
         address = self._address
         if callable(self.function) and (go!=0 or self.run()):
+            spec = self.fullargspec
+            if spec is None: ##shouldn't happen as self.function callable
+                return self
             if address:
                 pairs = ', '.join([("%s = '%s'" if isinstance(value, str) else "%s = %s")%(key, value) for key, value in address])
                 msg = "get_cell(%s)()"%pairs
             else:
                 msg = str(address)
             logger.info(msg)
-            kwargs = {arg: self[arg] for arg in self._args if arg in self}
+            args = spec.args
+            kwonlyargs = spec.kwonlyargs
+            defaults = [] if spec.defaults is None else spec.defaults
+            varargs = [] if spec.varargs is None or spec.varargs not in self else as_list(self[spec.varargs])
+            varkw = {} if spec is None or spec.varkw is None or spec.varkw not in self else self[spec.varkw]
+            if not isinstance(varkw, dict):
+                raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
+            required_args = [self[arg] for arg in args[:-len(defaults)]]
+            defaulted_args = [self.get(arg, default) for arg, default in zip(args[-len(defaults):], defaults)]
+            kwargs = {arg : self[arg] for arg in kwonlyargs}
+            kwargs.update(varkw)
             function = self._function
             mode = 0 if mode == -1 else mode
-            res, called_args, called_kwargs = function(go = go-1 if is_num(go) and go>0 else go, mode = mode, **kwargs)
+            res, called_args, called_kwargs = function(*required_args, *defaulted_args, *varargs, go = go-1 if is_num(go) and go>0 else go, mode = mode, **kwargs)
             c = self + called_kwargs
             output = cell_output(c)
             if output is None:

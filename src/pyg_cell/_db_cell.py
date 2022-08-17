@@ -462,8 +462,6 @@ def cell_push(nodes = None, exc = None, go = 1):
         del UPDATED[child]
 
 
-
-
 def cell_pull(nodes, types = cell):
     for node in as_list(nodes):
         node = node.pull()
