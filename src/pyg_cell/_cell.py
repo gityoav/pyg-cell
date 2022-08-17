@@ -695,8 +695,8 @@ class cell(dictattr):
             varkw = {} if spec is None or spec.varkw is None or spec.varkw not in self else self[spec.varkw]
             if not isinstance(varkw, dict):
                 raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
-            required_args = [self[arg] for arg in args[:-len(defaults)]]
-            defaulted_args = [self.get(arg, default) for arg, default in zip(args[-len(defaults):], defaults)]
+            required_args = [self[arg] for arg in args[:len(args)-len(defaults)]] 
+            defaulted_args = [self.get(arg, default) for arg, default in zip(args[len(args)-len(defaults):], defaults)]
             kwargs = {arg : self[arg] for arg in kwonlyargs}
             kwargs.update(varkw)
             function = self._function
