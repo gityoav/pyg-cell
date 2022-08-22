@@ -105,9 +105,9 @@ def _load_asof(table, kwargs, deleted, qq = None):
     l = len(live)
     if deleted in (False, None): # we just want live values
         if l == 0:
-            raise ValueError('no undeleted cells found matching %s'%kwargs)        
+            raise ValueError('no undeleted cells found matching %s in \n%s'%(kwargs, live))        
         elif l>1:
-            raise ValueError('multiple cells found matching %s'%kwargs)
+            raise ValueError('multiple cells found matching %s in \n%a'%(kwargs, live))
         return live[0]
     else:  
         qq = _get_qq(qq, table)
@@ -117,7 +117,7 @@ def _load_asof(table, kwargs, deleted, qq = None):
             return past[0]
         elif p > 1:
             if deleted is True:
-                raise ValueError('multiple historic cells are avaialble %s with these dates: %s. set delete = DATE to find the cell on that date'%(kwargs, past.deleted))
+                raise ValueError('multiple historic cells are avaialble %s with these dates: %s. set delete = DATE to find the cell on that date in \n%s'%(kwargs, past.deleted, past))
             else:
                 return past.sort('deleted')[0]
         else:    ## no records found in past, we go to the deleted history
@@ -125,12 +125,12 @@ def _load_asof(table, kwargs, deleted, qq = None):
             h = len(history)
             if h == 0:
                 if l > 0:
-                    raise ValueError('no deleted cells found matching %s but a live one exists. Set deleted = False to get it'%kwargs)        
+                    raise ValueError('no deleted cells found matching %s but a live one exists. Set deleted = False to get it, in \n%s'%(kwargs, history))        
                 else:                   
-                    raise ValueError('no deleted cells found matching %s'%kwargs)        
+                    raise ValueError('no deleted cells found matching %s in \n%s'%(kwargs, history))        
             elif h>1:
                 if deleted is True:
-                    raise ValueError('multiple historic cells are avaialble %s with these dates: %s. set delete = DATE to find the cell on that date'%(kwargs, history.deleted))
+                    raise ValueError('multiple historic cells are avaialble %s with these dates: %s. set delete = DATE to find the cell on that date, in \n%s'%(kwargs, history.deleted, history))
                 else:
                     return history.sort('deleted')[0]
             else:
