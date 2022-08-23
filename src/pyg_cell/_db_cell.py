@@ -143,7 +143,7 @@ def _is_primitive(value):
     elif isinstance(value, dict):
         return min([_is_primitive(v) for v in value.values()], default = True)
     else:
-        return value is None or isinstance(value, (bool, str, int, float, datetime.datetime, datetime.date, partial))
+        return value is None or isinstance(value, (type, bool, str, int, float, datetime.datetime, datetime.date, partial))
 
 class db_cell(cell):
     """
