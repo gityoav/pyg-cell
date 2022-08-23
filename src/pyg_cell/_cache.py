@@ -1,4 +1,4 @@
-from pyg_base import wrapper, getargs, as_list, getcallargs, logger, cache
+from pyg_base import wrapper, getargs, as_list, getcallargs, logger, cache, is_num, is_date
 from pyg_cell._cell import cell_item
 from pyg_cell._periodic_cell import periodic_cell
 from pyg_cell._types import _get_mode, DBS
@@ -141,10 +141,11 @@ class cell_cache(wrapper):
         for key in ['go', 'mode']:
             if key in res:
                 del res[key]
-        try:
-            res = res.go(go = go)
-        except Exception:
-            logger.warning('Unable to run cell, returning cached data')
+        if is_num(go) or is_date(go):
+            try:
+                res = res.go(go = go)
+            except Exception as e:
+                logger.warning('Unable to run cell, returning cached data. \n%s'%e)
         return res
 
 class db_cache(cell_cache):
