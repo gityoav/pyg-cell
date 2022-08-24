@@ -683,7 +683,7 @@ class cell(dictattr):
             if spec is None: ##shouldn't happen as self.function callable
                 return self
             if address:
-                pairs = ', '.join([("%s = '%s'" if isinstance(value, str) else "%s = %s")%(key, value) for key, value in address])
+                pairs = ', '.join([("%s = '%s'" if isinstance(value, str) else "%s = dt('%s')" if is_date(value) else "%s = %s")%(key, value) for key, value in address])
                 msg = "get_cell(%s)()"%pairs
             else:
                 msg = str(address)
