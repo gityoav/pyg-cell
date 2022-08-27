@@ -6,6 +6,7 @@ _period = 'period'
 
 _day_start = cfg_read().get('day_start', 0)
 _day_end = cfg_read().get('day_end', 235959)
+_end_date = 'end_date'
 
 class periodic_cell(db_cell):
     """
@@ -39,7 +40,7 @@ class periodic_cell(db_cell):
         super(periodic_cell, self).__init__(function, output = output, db = db, **kwargs)
             
     def run(self):
-        end_date = self.get('end_date')
+        end_date = self.get(_end_date)
         time = dt()
         updated = self.get(_updated)
         # if self[_updated] is None or dt_bump(self[_updated], self[_period]) < time:
