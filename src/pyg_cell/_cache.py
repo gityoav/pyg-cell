@@ -78,6 +78,23 @@ class cell_cache(wrapper):
     >>>     return pd.Series(np.random.normal(100), drange(-99))
     sql_binary_store
     >>> ts = bdh('a', 'e')
+     
+    Example: passing cells to a cell_cache function
+    -------
+    >>> from pyg import * 
+    >>> t = partial(sql_table, server = None, db = 'test', schema = 'dbo', table = 'items', pk = 'ticker', doc = True)
+    >>> t().delete()
+
+    >>> a = db_cell(passthru, data = dictable(a = [1,2,3]), ticker = 'a', db = t).go()
+    >>> b = db_cell(passthru, data = dictable(a = [4,5,3]), ticker = 'b', db = t).go()
+
+    >>> def f(a,b, ticker):
+    >>>     return a + b
+    
+    >>> self = cell_cache(f, table = t)
+    >>> c = self(a = a, b = b, ticker = 'c')
+    >>> assert isinstance(get_cell('items', 'test', schema = 'dbo', ticker = 'c').a, db_cell)
+    
     """
     def __init__(self, function = None, db = None, schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
         cell_kwargs  = cell_kwargs or {}

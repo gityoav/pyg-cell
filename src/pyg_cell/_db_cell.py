@@ -256,7 +256,7 @@ class db_cell(cell):
         if self.get(_db) is None: 
             return super(db_cell, self)._clear()
         else:
-            return self[[_db, _function, _updated] + self.db().pk] if _updated in self else self[[_db, _function] + self.db().pk]
+            return self[[_db, _function, _updated] + self.db()._pk] if _updated in self else self[[_db, _function] + self.db()._pk]
 
     def save(self):
         if self.get(_db) is None:
