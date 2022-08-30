@@ -94,6 +94,8 @@ class cell_cache(wrapper):
     >>> self = cell_cache(f, table = t)
     >>> c = self(a = a, b = b, ticker = 'c')
     >>> assert isinstance(get_cell('items', 'test', schema = 'dbo', ticker = 'c').a, db_cell)
+
+    _ = self(ticker = 'c', go = 2)
     
     """
     def __init__(self, function = None, db = None, schema = None, table = None, url = None, server = None, pk = None, cell = periodic_cell, writer = None, cell_kwargs = None, external = None):
