@@ -479,8 +479,11 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
 
     :Parameters:
     ----------
-    table : str
-        name of table (Mongo collection). alternatively, you can just provide an address
+    table : str, an address in the form of pairs, or a partial to sql_table on mongo_table
+        name of table (Mongo collection). 
+        alternatively, you can just provide an address
+        or a partial to the actual table
+        
     db : str
         name of database.
     url : str, optional
@@ -527,18 +530,30 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
     
     schema = kwargs.pop('schema', None)
     mode = _get_mode(url, server, schema = schema)    
-    if table is not None and (db is not None or mode == 'sql'):
-        if mode == 'mongo':
-            t = DBS[mode](db = db, table = table, url = url or server, pk = pk)
-            qq = QQ[mode]
-        elif mode == 'sql':
-            t = DBS[mode](db = db, table = table, server = server or url, schema = schema, pk = pk, doc = doc or _doc)
-            qq = t.table.c
+    if table is not None:
+        if isinstance(table, partial):
+            t = table()
+            if table.func == DBS.get('sql'):
+                mode = 'sql'
+                qq = t.table.c
+            elif table.func == DBS.get('mongo'):
+                mode = 'mongo'
+                qq = QQ[mode]
+        elif (db is not None or mode == 'sql'):
+            if mode == 'mongo':
+                t = DBS[mode](db = db, table = table, url = url or server, pk = pk)
+                qq = QQ[mode]
+            elif mode == 'sql':
+                t = DBS[mode](db = db, table = table, server = server or url, schema = schema, pk = pk, doc = doc or _doc)
+                qq = t.table.c
+        else:
+            return GRAPH[address]
         address = t.address + kwargs_address
         if _from_memory and deleted in (None, False): # we want the standard cell
             if address not in GRAPH:
                 doc = _load_asof(t, kwargs, deleted, qq)
-                GRAPH[doc._address] = doc
+                if isinstance(doc, cell):
+                    GRAPH[doc._address] = doc
                 return doc
             else:
                 return GRAPH[address]
