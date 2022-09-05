@@ -283,45 +283,6 @@ class cell_func(wrapper):
                                         unitemized = as_list(unitemized),
                                         uncalled = as_list(uncalled))
 
-    # def wrapped(self, *args, **kwargs):
-    #     """
-    #     function = lambda a: a+1
-    #     self = cell_func(function)
-    #     args = ()
-    #     kwargs = dict(go = 0, a = 1)
-    #     import inspect
-        
-        
-    #     """
-    #     go = kwargs.pop('go', 0)
-    #     mode = kwargs.pop('mode', 0)
-    #     function_ = cell_item(cell_go(self.function, go))    
-    #     callargs = getcallargs(function_, *args, **kwargs)
-    #     spec = getargspec(function_)
-    #     arg_names = [] if spec.args is None else spec.args
-        
-    #     c = dict(callargs)
-    #     varargs = c.pop(spec.varargs) if spec.varargs else []
-    #     loaded_args = cell_load(varargs, mode)
-    #     called_varargs = cell_go(loaded_args , go)
-    #     itemized_varargs = cell_item(called_varargs, _data)
-
-    #     varkw = c.pop(spec.varkw) if spec.varkw else {}
-    #     loaded_varkw = {k : v if k in self.unloaded else cell_load(v, mode) for k, v in varkw.items()}
-    #     called_varkw = {k : v if k in self.uncalled else cell_go(v, go) for k, v in loaded_varkw.items()}
-    #     itemized_varkw = {k : v if k in self.unitemized else _cell_item(v, self.relabels[k], True) if k in self.relabels else _cell_item(v, k) for k, v in called_varkw.items()}
-
-    #     defs = spec.defaults if spec.defaults else []
-    #     params = dict(zip(arg_names[-len(defs):], defs))
-    #     params.update(c)
-    #     loaded_params = {k : v if k in self.unloaded else cell_load(v, mode) for k, v in params.items()}
-    #     called_params = {k : v if k in self.uncalled else cell_go(v, go) for k, v in loaded_params.items()}
-    #     itemized_params = {k : v if k in self.unitemized else _cell_item(v, self.relabels[k], True) if k in self.relabels else _cell_item(v, k) for k, v in called_params.items()}
-        
-    #     args_ = [itemized_params[arg] for arg in arg_names if arg in params] + list(itemized_varargs)
-    #     res = function_(*args_, **itemized_varkw)
-    #     called_params.update(called_varkw)
-    #     return res, itemized_varargs, called_params
     
     @property
     def output(self):

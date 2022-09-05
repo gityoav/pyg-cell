@@ -1,8 +1,8 @@
-from pyg_base import is_date, ulist, logger, is_str, as_list, get_cache, Dict, dictable
+from pyg_base import is_date, ulist, logger, is_str, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
-from pyg_cell._cell import cell, cell_clear, cell_item, cell_output
+from pyg_cell._cell import cell, cell_clear, cell_item, cell_output, cell_func
 from pyg_cell._dag import get_DAG, get_GAD, descendants
 
 from functools import partial
@@ -49,6 +49,25 @@ def is_pairs(pairs):
     return isinstance(pairs, tuple) and min([isinstance(item, tuple) and len(item) == 2 for item in pairs], default= False)
 
 
+class db_cell_func(cell_func):
+    """
+    same as cell_func but implements a check that all cells internally point to the same environment variables
+
+    """
+    def wrapped(self, *args, **kwargs):
+        env = self.get('env')
+        if env is not None:
+            cells = list_instances((args, kwargs), db_cell)
+            for c in cells:
+                if 'db' in c.keys():
+                    keywords = c['db'].keywords
+                    for k,v in env.items():
+                        if keywords.get(k)!=v:
+                            raise ValueError('cell is pointing to %s=%s while all cells must point to %s'%(k,keywords.get(k),v))
+        return  super(db_cell_func, self).wrapped(*args, **kwargs)           
+
+
+        
 def db_save(value):
     """
     saves a db_cell from the database. Will iterates through lists and dicts
@@ -210,6 +229,25 @@ class db_cell(cell):
         else:
             self[_db] = None
             super(db_cell, self).__init__(function = function, output = output, **kwargs)
+
+    _func = db_cell_func
+    
+    @property
+    def _function(self):
+        if 'db' not in self:
+            function = self.function if isinstance(self.function, cell_func) else cell_func(self.function)
+        else:
+            keywords = self.db.keywords
+            env = {}
+            for k in ['server', 'url']:
+                if k in keywords:
+                    env[k] = keywords[k]
+            if env:
+                function = self.function if isinstance(self.function, db_cell_func) else db_cell_func(self.function)
+                function.env = env
+            else:
+                function = self.function if isinstance(self.function, cell_func) else cell_func(self.function)                
+        return function
 
     @property
     def _pk(self):
