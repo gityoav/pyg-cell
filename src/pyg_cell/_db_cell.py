@@ -243,7 +243,17 @@ class db_cell(cell):
                 if k in keywords:
                     env[k] = keywords[k]
             if env:
-                function = self.function if isinstance(self.function, db_cell_func) else db_cell_func(self.function)
+                if isinstance(self.function, db_cell_func):
+                    function  = self.function
+                elif isinstance(self.function, cell_func):
+                    f = self.function
+                    function = db_cell_func(f.function, 
+                                                relabels = f.relabels, 
+                                                unloaded = f.unloaded, 
+                                                unitemized = f.unitemized,
+                                                uncalled = f.uncalled)
+                else:
+                    function = db_cell_func(self.function)
                 function.env = env
             else:
                 function = self.function if isinstance(self.function, cell_func) else cell_func(self.function)                

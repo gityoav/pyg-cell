@@ -29,7 +29,7 @@ def cell_output(c):
     returns the keys the cell output is stored at. equivalent to cell._output
     """
     res = c.get(_output)
-    if res is None:
+    if res is None or res is False:
         res = getattr(c.get(_function), _output, None)
     if res is None:
         res = _data
@@ -286,7 +286,8 @@ class cell_func(wrapper):
     
     @property
     def output(self):
-        return getattr(self.function, _output, None)
+        res = getattr(self.function, _output, None)
+        return res or None
     
     def loaded(self, *args, **kwargs):
         go = kwargs.pop('go', 0)
