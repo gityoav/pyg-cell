@@ -1,4 +1,4 @@
-from pyg_base import is_date, ulist, logger, is_str, as_list, get_cache, Dict, dictable, list_instances
+from pyg_base import is_date, ulist, logger, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
@@ -8,6 +8,12 @@ from pyg_cell._dag import get_DAG, get_GAD, descendants
 from functools import partial
 # import networkx as nx
 import os
+
+def is_partial(db):
+    return isinstance(db, partial)
+
+def not_partial(db):
+    return not isinstance(db, partial)
 
 _readers = dict(parquet = pd_read_parquet, 
                 pickle = pickle_load, 
@@ -220,11 +226,10 @@ class db_cell(cell):
 
     def __init__(self, function = None, output = None, db = None, **kwargs):
         if db is not None:
-            if not isinstance(db, partial):
-                raise ValueError('type of db is: %s while db must be a *partial* of a function like mongo_table initializing a mongo cursor' % type(db))
-            non_primitives = {key : value for key, value in db.keywords.items() if not _is_primitive(value)}
-            if len(non_primitives):
-                raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
+            if is_partial(db):
+                non_primitives = {key : value for key, value in db.keywords.items() if not _is_primitive(value)}
+                if len(non_primitives):
+                    raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
             super(db_cell, self).__init__(function = function, output = output, db = db, **kwargs)
         else:
             self[_db] = None
@@ -234,7 +239,7 @@ class db_cell(cell):
     
     @property
     def _function(self):
-        if 'db' not in self:
+        if not_partial(self.get(_db)):
             function = self.function if isinstance(self.function, cell_func) else cell_func(self.function)
         else:
             keywords = self.db.keywords
@@ -261,8 +266,11 @@ class db_cell(cell):
 
     @property
     def _pk(self):
-        if self.get(_db) is None:
+        db = self.get(_db)
+        if db is None:
             return super(db_cell, self)._pk
+        elif is_strs(db):
+            return as_list(db)
         else:
             return self.db.keywords.get(_pk)        
 
@@ -283,9 +291,10 @@ class db_cell(cell):
         tuple
             returns a tuple representing the unique address of the cell.
         """
-        if self.get(_db) is None:
-            return super(db_cell, self)._address
-        db = self.db()
+        db = self.get(_db)
+        if not_partial(db):
+            return super(db_cell, self)._address        
+        db = db()
         db_address = db.address
         db_dict = dict(db_address)
         return db_address + tuple([(key, self.get(key)) for key in db._pk if key not in db_dict])
@@ -301,17 +310,18 @@ class db_cell(cell):
             skeletal reference to the database
 
         """
-        if self.get(_db) is None: 
+        if not_partial(self.get(_db)): 
             return super(db_cell, self)._clear()
         else:
             return self[[_db, _function, _updated] + self.db()._pk] if _updated in self else self[[_db, _function] + self.db()._pk]
 
     def save(self):
-        if self.get(_db) is None:
+        db = self.get(_db)
+        if not_partial(db):
             return super(db_cell, self).save()
         address = self._address
         doc = (self - _deleted)
-        db = self.db()
+        db = db()
         missing = ulist(db._pk) - self.keys()
         if len(missing):
             logger.warning('WARN: document not saved as some keys are missing %s'%missing)
@@ -365,7 +375,7 @@ class db_cell(cell):
         document
 
         """
-        if self.get(_db) is None:
+        if not_partial(self.get(_db)):
             return super(db_cell, self).load(mode = mode)
         if isinstance(mode, (list, tuple)):
             if len(mode) == 0:
@@ -579,7 +589,7 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
     schema = kwargs.pop('schema', None)
     mode = _get_mode(url, server, schema = schema)    
     if table is not None:
-        if isinstance(table, partial):
+        if is_partial(table):
             t = table()
             if table.func == DBS.get('sql'):
                 mode = 'sql'
