@@ -36,8 +36,10 @@ _doc = 'doc'
 
 __all__ = ['db_load', 'db_save', 'db_cell', 'cell_push', 'cell_pull', 'get_cell', 'load_cell', 'get_data', 'load_data']
 
+
 def get_GRAPH():
     return get_cache('GRAPH')
+
 
 def is_pairs(pairs):
     """
@@ -71,7 +73,6 @@ class db_cell_func(cell_func):
                         if keywords.get(k)!=v:
                             raise ValueError('cell is pointing to %s=%s while all cells must point to %s'%(k,keywords.get(k),v))
         return  super(db_cell_func, self).wrapped(*args, **kwargs)           
-
 
         
 def db_save(value):
@@ -123,7 +124,8 @@ def db_load(value, mode = 0):
         return type(value)(**{k : db_load(v, mode = mode) for k, v in value.items()})
     else:
         return value
-        
+
+
 def _load_asof(table, kwargs, deleted, qq = None):  
     t = table.inc(kwargs)
     live = t
@@ -361,14 +363,14 @@ class db_cell(cell):
 
         :Parameters:
         ----------
-        mode : int , dataetime, optional
-            if -1, then does not load and clears the GRAPH
-            if 0, then will load from database if found. If not found, will return original document
-            if 1, then will load, if doc not found, data from files (equivalent to db_cell.load_output)
-            if mode is a date, will return the version alive at that date 
+        mode : int , dataetime, str(s), optional
+            if -1,   then will not load and clears the GRAPH
+            if 0,    then will load from database if found. If not found, will return original document
+            if 1,    then will load, if doc not found, data from files (equivalent to db_cell.load_output)
+            if date, then will return the version alive at that date 
+            if strs, then will exclue these keys from the keys loaded from old document
             The default is 0.
             
-            IF you enclose any of these in a list, then GRAPH is cleared prior to running and the database is called.
     
         :Returns:
         -------
@@ -377,16 +379,16 @@ class db_cell(cell):
         """
         if not_partial(self.get(_db)):
             return super(db_cell, self).load(mode = mode)
-        if isinstance(mode, (list, tuple)):
-            if len(mode) == 0:
-                return self.load()
-            if len(mode) == 1:
-                return self.load(mode[0])
-            if len(mode) == 2 and mode[0] == -1:
-                res = self.load(-1)
-                return res.load(mode[-1])
-            else:
-                raise ValueError('mode can only be of the form [], [mode] or [-1, mode]')
+        # if isinstance(mode, (list, tuple)):
+        #     if len(mode) == 0:
+        #         return self.load()
+        #     if len(mode) == 1:
+        #         return self.load(mode[0])
+        #     if len(mode) == 2 and mode[0] == -1:
+        #         res = self.load(-1)
+        #         return res.load(mode[-1])
+        #     else:
+        #         raise ValueError('mode can only be of the form [], [mode] or [-1, mode]')
         db = self.db(mode = 'w')
         pk = ulist(db._pk)
         missing = pk - self.keys()
@@ -410,7 +412,7 @@ class db_cell(cell):
                     graph[doc._address] = doc
                 except Exception:
                     if mode in (1, True):
-                        return self.load_output()
+                        return self.load_output() # just load outputs if exists
                     else:
                         return self
 
@@ -422,7 +424,9 @@ class db_cell(cell):
                 excluded_keys = (self /  None).keys() - self._output - _updated
             else:
                 excluded_keys = (self /  None).keys()
-            if is_date(mode):
+            if is_strs(mode):
+                excluded_keys += as_list(mode)
+            elif is_date(mode):
                 excluded_keys += [_id]
             update = (saved / None) - excluded_keys
             self.update(update)
@@ -530,7 +534,7 @@ def cell_pull(nodes, types = cell):
 
 
 
-def _get_cell(table = None, db = None, url = None, server = None, deleted = None, _from_memory = None, doc = None, **kwargs):
+def _get_cell(table = None, db = None, url = None, schema = None, server = None, deleted = None, _from_memory = None, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. In addition, can look at earlier versions using deleted.
     It is important to note that this DOES NOT go through the cache mechanism but goes to the database directly every time.
@@ -573,6 +577,7 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
         params.update({key: value for key, value in dict(db = db, 
                                                          url = url, 
                                                          server = server,
+                                                         schema = schema, 
                                                          deleted = deleted,
                                                          _from_memory = _from_memory
                                                          ).items() if value is not None})
@@ -586,7 +591,6 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
         pk = sorted(as_list(pk))
         address = kwargs_address = tuple([(key, kwargs.get(key)) for key in pk]) 
     
-    schema = kwargs.pop('schema', None)
     mode = _get_mode(url, server, schema = schema)    
     if table is not None:
         if is_partial(table):
@@ -621,7 +625,7 @@ def _get_cell(table = None, db = None, url = None, server = None, deleted = None
         return GRAPH[address]
 
 
-def load_cell(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
+def load_cell(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. 
     In addition, can look at earlier versions using deleted.
@@ -657,9 +661,9 @@ def load_cell(table = None, db = None, url = None, server = None, deleted = None
     >>> assert load_cell('test','test', surname = 'brown').name == 'bob'
         
     """
-    return _get_cell(table = table, db = db, url = url, deleted = deleted, server = server, doc = doc, **kwargs)
+    return _get_cell(table = table, db = db, url = url, schema = schema, deleted = deleted, server = server, doc = doc, **kwargs)
 
-def get_docs(table = None, db = None, url = None, server = None, pk = None, cell = 'data', doc = None, **kwargs):
+def get_docs(table = None, db = None, url = None, schema = None, server = None, pk = None, cell = 'data', doc = None, **kwargs):
     """
     retrieves multiple cells from a table
 
@@ -675,7 +679,6 @@ def get_docs(table = None, db = None, url = None, server = None, pk = None, cell
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
 
     """
-    schema = kwargs.pop('schema', None)
     mode = _get_mode(url, server, schema = schema)
     if mode == 'mongo':
         t = DBS[mode](db = db, table = table, url = url or server, pk = pk).inc(**kwargs)
@@ -684,7 +687,7 @@ def get_docs(table = None, db = None, url = None, server = None, pk = None, cell
     return t.docs(list(kwargs.keys()))
 
     
-def get_cell(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
+def get_cell(table = None, db = None, schema = None, url = None, server = None, deleted = None, doc = None, **kwargs):
     """
     unlike load_cell which will get the data from the database by default 
     get cell looks at the in-memory cache to see if the cell exists there.
@@ -718,7 +721,7 @@ def get_cell(table = None, db = None, url = None, server = None, deleted = None,
     >>> assert get_cell('test','test', surname = 'brown').name == 'bob'
     """
     _from_memory = kwargs.pop('_from_memory', True)
-    params = dict(table = table, db = db, url = url, server = server, deleted = deleted)
+    params = dict(table = table, db = db, url = url, server = server, deleted = deleted, schema = schema)
     params.update(kwargs)
     multiples = {k : v for k, v in params.items() if isinstance(v, list)}
     if len(multiples) == 0:
@@ -739,7 +742,8 @@ def get_cell(table = None, db = None, url = None, server = None, deleted = None,
         res[doc or _doc] = docs
         return res
 
-def get_data(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
+
+def get_data(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. 
     In addition, can look at earlier versions using deleted.
@@ -774,14 +778,15 @@ def get_data(table = None, db = None, url = None, server = None, deleted = None,
     >>> assert get_data('test','test', surname = 'brown') is None
         
     """  
-    cells = get_cell(table, db = db, url = url, server = server, deleted = deleted, doc = doc, **kwargs)
+    cells = get_cell(table, db = db, url = url, schema = schema, server = server, deleted = deleted, doc = doc, **kwargs)
     if isinstance(cells, dictable):
         cells[doc or _doc] = cell_item(cells[doc or _doc], key = 'data')
         return cells
     else:
         return cell_item(cells, key = 'data')
 
-def load_data(table = None, db = None, url = None, server = None, deleted = None, doc = None, **kwargs):
+
+def load_data(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. 
     In addition, can look at earlier versions using deleted.
@@ -818,5 +823,5 @@ def load_data(table = None, db = None, url = None, server = None, deleted = None
     >>> assert load_data('test','test', surname = 'brown') is None
         
     """    
-    return cell_item(load_cell(table, db = db, url = url, server = server, deleted = deleted, doc = doc, **kwargs), key = 'data')
+    return cell_item(load_cell(table, db = db, url = url, schema = schema, server = server, deleted = deleted, doc = doc, **kwargs), key = 'data')
 
