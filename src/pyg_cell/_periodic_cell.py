@@ -18,6 +18,11 @@ class periodic_cell(db_cell):
     1) period   : determine frequency of update schedule
     2) end_date : determine when to stop updating
     
+    In addition, there are three more parameters used in determining business days, if period is in business days
+
+    3) calendar : determines the calendar used 
+    4) day_start: time when business day starts
+    5) day_end  : time when business day ends
     
     :Example: periodic cell and 'period' parameter
     ---------
