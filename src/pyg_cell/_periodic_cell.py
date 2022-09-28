@@ -1,4 +1,4 @@
-from pyg_base import dt, dt_bump, calendar, cfg_read, is_date
+from pyg_base import dt, dt_bump, calendar, cfg_read, is_date, as_list
 from pyg_cell._db_cell import db_cell, _updated
 
 __all__ = ['periodic_cell']
@@ -7,6 +7,7 @@ _period = 'period'
 _day_start = cfg_read().get('day_start', 0)
 _day_end = cfg_read().get('day_end', 235959)
 _end_date = 'end_date'
+END_DATE = ['maturity', 'last_tradeable_dt', 'opt_expire_dt']
 
 class periodic_cell(db_cell):
     """
@@ -39,14 +40,18 @@ class periodic_cell(db_cell):
         self[_period] = period 
         super(periodic_cell, self).__init__(function, output = output, db = db, **kwargs)
             
-    def run(self):
-        end_date = self.get(_end_date)
+    def run(self):        
+        end_date = self.get(_end_date, END_DATE)
         time = dt()
         updated = self.get(_updated)
         # if self[_updated] is None or dt_bump(self[_updated], self[_period]) < time:
-        if is_date(end_date) and time > dt(end_date, 1) and updated is not None and dt_bump(updated, self[_period]) >= end_date: ## we expired and last ran near expiry
-            return super(periodic_cell, self).run() 
-        elif updated is None:
+        for e in as_list(end_date):
+            edate = self.get(e)
+            if edate: # exclude 0 and None
+                edate = dt(edate)                
+                if time > dt(edate, 1) and updated is not None and dt_bump(updated, self[_period]) >= edate: ## we expired and last ran near expiry
+                    return super(periodic_cell, self).run() 
+        if updated is None:
             return True
         else:
             cal = calendar(self.get('calendar'))
