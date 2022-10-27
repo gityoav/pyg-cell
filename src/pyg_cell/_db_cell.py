@@ -1,7 +1,7 @@
 from pyg_base import is_date, ulist, logger, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
-from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
+from pyg_cell._types import _get_mode, _get_qq, DBS, QQ, CLSS
 from pyg_cell._cell import cell, cell_clear, cell_item, cell_output, cell_func
 from pyg_cell._dag import get_DAG, get_GAD, descendants
 
@@ -586,6 +586,13 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
     
     pk = kwargs.pop('pk', None)
     if pk is None:
+        if isinstance(table, partial):
+            pk = as_list(table().pk)
+        elif isinstance(table, tuple(CLSS.values())):
+            pk = as_list(table.pk)
+        elif hasattr(table, 'pk'):
+            pk = as_list(table.pk)
+    if pk is None:
         address = kwargs_address = tuple(sorted(kwargs.items()))
     else:
         pk = sorted(as_list(pk))
@@ -601,6 +608,14 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
             elif table.func == DBS.get('mongo'):
                 mode = 'mongo'
                 qq = QQ[mode]
+        elif 'sql' in CLSS and isinstance(table, CLSS['sql']):
+            t = table
+            mode = 'sql'
+            qq = t.table.c
+        elif 'mongo' in CLSS and isinstance(table, CLSS['mongo']):
+            t = table
+            mode = 'mongo'
+            qq = QQ[mode]
         elif (db is not None or mode == 'sql'):
             if mode == 'mongo':
                 t = DBS[mode](db = db, table = table, url = url or server, pk = pk)
