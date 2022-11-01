@@ -343,7 +343,7 @@ class db_cell(cell):
         """
         loads a document from the database and updates various keys.
         
-        :Persistency:
+        Example:Persistency:
         -------------
         Since we want to avoid hitting the database, there is a singleton GRAPH, a dict, storing the cells by their address.
         Every time we load/save from/to Mongo, we also update GRAPH.
@@ -354,7 +354,7 @@ class db_cell(cell):
         >>> cell.load(-1).load(0)  # clear GRAPH and load from db
         >>> cell.load([0])     # same thing: clear GRAPH and then load if available
 
-        :forcing update on change in function inputs:
+        Example:forcing update on change in function inputs:
         ---------------------------------------------
         If the current cell, has inputs that is different from the saved document inputs, we force a recalculation by setting updated = None
 
@@ -367,7 +367,7 @@ class db_cell(cell):
         >>> assert new.run() is True
         >>> assert db_cell(add_, a = 2, b = 2, c = 3, key = 'a', db = db)().data == 4
         
-        :Merge of cached cell and calling cell:
+        Example:Merge of cached cell and calling cell:
         ----------------------------------------
         Once we load from memory (either MongoDB or GRAPH), we tree_update the cached cell with the new values in the current cell.
         This means that it is next to impossible to actually *delete* keys. If you want to delete keys in a cell/cells in the database, you need to:
