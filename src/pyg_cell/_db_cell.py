@@ -1,4 +1,4 @@
-from pyg_base import is_date, ulist, logger, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
+from pyg_base import is_date, ulist, logger, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ
@@ -429,7 +429,10 @@ class db_cell(cell):
             elif is_date(mode):
                 excluded_keys += [_id]
             update = (saved / None) - excluded_keys
+            updated_inputs = [k for k, v in self._inputs.items() if is_primitive(v) and k in update and v is not None and update[k]!=v]
             self.update(update)
+            if len(updated_inputs):
+                self[_updated] = None
         return self        
 
     def load_output(self):
