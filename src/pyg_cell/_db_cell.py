@@ -354,6 +354,19 @@ class db_cell(cell):
         >>> cell.load(-1).load(0)  # clear GRAPH and load from db
         >>> cell.load([0])     # same thing: clear GRAPH and then load if available
 
+        :forcing update on change in function inputs:
+        ---------------------------------------------
+        If the current cell, has inputs that is different from the saved document inputs, we force a recalculation by setting updated = None
+
+        >>> from pyg import *
+        >>> db = partial(sql_table, server = 'DESKTOP-LU5C5QF', table = 'test', db = 'test_db', schema = 'dbo', pk = 'key', doc =True)
+        >>> doc = db_cell(add_, a = 1, b = 2, c = 3, key = 'a', db = db)()
+        >>> same_doc = db_cell(db = db, key = 'a').load()
+        >>> assert same_doc.run() is False
+        >>> new = db_cell(add_, a = 2, b = 2, c = 3, key = 'a', db = db).load()
+        >>> assert new.run() is True
+        >>> assert db_cell(add_, a = 2, b = 2, c = 3, key = 'a', db = db)().data == 4
+        
         :Merge of cached cell and calling cell:
         ----------------------------------------
         Once we load from memory (either MongoDB or GRAPH), we tree_update the cached cell with the new values in the current cell.
@@ -428,8 +441,8 @@ class db_cell(cell):
                 excluded_keys += as_list(mode)
             elif is_date(mode):
                 excluded_keys += [_id]
+            updated_inputs = [k for k, v in self._inputs.items() if is_primitive(v) and k in saved and v is not None and saved[k]!=v]
             update = (saved / None) - excluded_keys
-            updated_inputs = [k for k, v in self._inputs.items() if is_primitive(v) and k in update and v is not None and update[k]!=v]
             self.update(update)
             if len(updated_inputs):
                 self[_updated] = None
