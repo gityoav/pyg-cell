@@ -429,6 +429,8 @@ class cell(dictattr):
         >>> c = c()
         >>> assert c.data == 2 and not c.run()
         """
+        if self.get(_updated) is None:
+            return True
         output = cell_output(self)
         if _data in output:
             return self.get(_data) is None

@@ -3,6 +3,8 @@ from functools import partial
 
 from pyg_base import * 
 from pyg_mongo import * 
+from pyg_sql import *
+from pyg_cell import *
 from operator import add
 from functools import partial
 import pytest
@@ -48,7 +50,20 @@ def test_db_cell_save():
     d.reset.drop()
 
 
-    
+def test_get_cell_sql_doc_store():
+    t = partial(sql_table, server = None, db = 'test_db', schema = 'dbo', table = 'test_sql_doc_store', doc = True, nullable = dict(i = int, f = float, s = str, d = datetime.datetime), pk = ['a','b'])
+    tbl = t()
+    a = db_cell(passthru, data = 1, a = 'a', b = 'b', f = 1., i = 0, s = 'str', d = dt(0), db = t)
+    b = db_cell(passthru, data = 2, a = 'aa', b = 'bb', f = 1., i = 0, s = 'a', d = dt(0), db = t)
+    assert a.run()
+    a = a()
+    b = b()    
+
+    assert get_cell(table = t, a = 'a', s = 'str').data == 1
+    assert get_cell(table = tbl, a = 'a', s = 'str').data == 1
+
+
+
 
 def test_db_cell_save_root():
     db = partial(mongo_table, db = 'temp', table = 'temp', pk = 'key', writer = 'c:/temp/%key.parquet')    
