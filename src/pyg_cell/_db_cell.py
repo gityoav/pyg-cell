@@ -33,6 +33,7 @@ _db = 'db'
 _updated = 'updated'
 _function = 'function'
 _doc = 'doc'
+_writer = 'writer'
 
 __all__ = ['db_load', 'db_save', 'db_cell', 'cell_push', 'cell_pull', 'get_cell', 'load_cell', 'get_data', 'load_data']
 
@@ -441,14 +442,15 @@ class db_cell(cell):
                 excluded_keys += as_list(mode)
             elif is_date(mode):
                 excluded_keys += [_id]
-            updated_inputs = [k for k, v in self._inputs.items() if is_primitive(v) and k in saved and v is not None and saved[k]!=v]
+            updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and 
+                              (type(saved[k])!=type(v) or (is_primitive(v) and saved[k]!=v))]
             update = (saved / None) - excluded_keys
             self.update(update)
             if len(updated_inputs):
                 self[_updated] = None
         return self        
 
-    def load_output(self):
+    def load_output(self, writer = None):
         """
         We may save the cell data on file system rather than in the database. 
         This allows us to load some of the data even if the database itself has been wiped clean.
@@ -461,12 +463,13 @@ class db_cell(cell):
         path = root_path(self, root)
         fmt = path.split('.')[-1].lower()
         n = len(fmt) + 1
+        writer = writer or self.get(_writer)
         for output in cell_output(self):
             for suffix, reader in _readers.items():
                 filename = path[:-n] + '/%s.%s'%(output, suffix)            
                 if os.path.exists(filename):
                     self[output] = reader(filename)
-                elif suffix == 'sql' and is_str(self.writer) and self.writer.endswith('sql'):
+                elif suffix == 'sql' and is_str(writer) and writer.endswith('sql'):
                     try:
                         filename = path[:-n] + '/%s'%(output)            
                         self[output] = reader(filename)
