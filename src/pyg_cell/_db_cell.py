@@ -450,6 +450,38 @@ class db_cell(cell):
                 self[_updated] = None
         return self        
 
+
+    def run(self):
+        """
+        Checks to see if any of the cells in the inputs have been updated since self has run.
+
+        Example
+        --------
+        >>> from pyg import *
+        >>> a = db_cell(passthru, data = 1, db = 'key', key = 'a')()
+        >>> b = db_cell(passthru, data = 2, db = 'key', key = 'b')()
+        >>> c = db_cell(add_, a = a, b = b, db = 'key', key = 'c')()
+    
+        ### suppose we now ran a        
+        >>> a = a(data = 3).go()
+
+        ### and a little later we loaded c
+        >>> c = db_cell(add_, a = a, b = b, db = 'key', key = 'c').load()
+        >>> assert c.updated < c.a.updated
+        >>> assert c.run()
+        
+        """
+        updated = self.get(_updated)
+        if updated is None:
+            return True
+        input_cells = list_instances(self._inputs, cell)
+        for c in input_cells:
+            u = c.get(_updated)
+            if is_date(u) and u > updated:
+                return True
+        return super(db_cell, self).run()
+
+
     def load_output(self, writer = None):
         """
         We may save the cell data on file system rather than in the database. 
