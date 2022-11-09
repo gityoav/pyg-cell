@@ -1,4 +1,4 @@
-from pyg_base import as_list, get_cache, dictattr, Dict, tree_getitem, getargspec, getargs, getcallargs, \
+from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_getitem, getargspec, getargs, getcallargs, \
                     eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
@@ -487,7 +487,10 @@ class cell(dictattr):
             self_updated = self.get(_updated)
             if is_date(saved_updated) and (self_updated is None or self_updated < saved_updated):
                 output = {key: value for key, value in saved.items() if (key in [_updated] + self._output and value is not None) or key not in self}
+                updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and (type(saved[k])!=type(v) or (is_primitive(v) and saved[k]!=v))]
                 self.update(output)
+                if len(updated_inputs):
+                    self[_updated] = None
         return self
             
     def __call__(self, go = 0, mode = 0, **kwargs):
