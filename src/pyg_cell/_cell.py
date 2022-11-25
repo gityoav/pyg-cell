@@ -34,7 +34,8 @@ def cell_output(c):
     if res is None:
         res = _data
     return as_list(res)
-    
+
+
 
 @loop(list, tuple)
 def _cell_item(value, key = None, key_before_data = False):
@@ -69,6 +70,20 @@ def _cell_item(value, key = None, key_before_data = False):
         else:            
             return Dict(value)[output]
         
+
+@loop(list, tuple)
+def _cell_outputs(c):
+    if isinstance(c, cell):
+        output = cell_output(c)
+        return dictattr({key: c.get(key) for key in output})
+    elif isinstance(c, dict):
+        return type(c)(**{k: _cell_outputs(v) for k, v in c.items()})
+    else:
+        return c
+
+def cell_outputs(value):
+    return _cell_outputs(value)
+    
 
 def cell_clear(value):
     """
