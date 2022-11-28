@@ -383,7 +383,8 @@ def _are_any_inputs_updated(new, old):
         v2 = old[k]
         if _is_different_except_cells(v1, v2):
             return True
-    return False
+    v1, v2 = new.function, old.function
+    return _is_different_except_cells(v1, v2)
 
 
 def is_pairs(pairs):
@@ -538,7 +539,7 @@ class cell(dictattr):
                 output = {key: value for key, value in saved.items() if (key in [_updated] + self._output and value is not None) or key not in self}
                 self.update(output)
                 if _are_any_inputs_updated(self, saved):
-                    self[_updated] = None
+                    self[_updated] = self_updated
         return self
             
     def __call__(self, go = 0, mode = 0, **kwargs):
