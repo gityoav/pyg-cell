@@ -350,7 +350,41 @@ class cell_func(wrapper):
         called_params.update(called_varkw)
         return res, itemized_varargs, called_params
         
-        
+
+def _is_different_except_cells(v1, v2):
+    """
+    We compare v1 to v2 and check if it is updated..
+    cells are compared at run() check rather than at load
+    """
+    if type(v1)!=type(v2):
+        return True
+    if isinstance(v1, cell):
+        return False
+    if isinstance(v1, (list, tuple)):
+        if len(v1)!=len(v2):
+            return True
+        for a1, a2 in zip(v1, v2):
+            if _is_different_except_cells(a1, a2):
+                return True
+        return False
+    if isinstance(v1, dict):
+        if sorted(v1.keys()) != sorted(v2.keys()):
+            return True
+        for k in v1:
+            if _is_different_except_cells(v1[k], v2[k]):
+                return True
+        return False
+    return not eq(v1, v2)
+
+def _are_any_inputs_updated(new, old):
+    for k, v1 in new._inputs.items():
+        if k not in old: ## k is a new key
+            return True
+        v2 = old[k]
+        if _is_different_except_cells(v1, v2):
+            return True
+    return False
+
 
 def is_pairs(pairs):
     """
@@ -502,9 +536,8 @@ class cell(dictattr):
             self_updated = self.get(_updated)
             if is_date(saved_updated) and (self_updated is None or self_updated < saved_updated):
                 output = {key: value for key, value in saved.items() if (key in [_updated] + self._output and value is not None) or key not in self}
-                updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and (type(saved[k])!=type(v) or (is_primitive(v) and saved[k]!=v))]
                 self.update(output)
-                if len(updated_inputs):
+                if _are_any_inputs_updated(self, saved):
                     self[_updated] = None
         return self
             
