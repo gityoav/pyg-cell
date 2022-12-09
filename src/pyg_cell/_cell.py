@@ -1,5 +1,5 @@
 from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_getitem, getargspec, getargs, getcallargs, \
-                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts
+                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
 
@@ -41,7 +41,14 @@ def cell_output(c):
 def _cell_item(value, key = None, key_before_data = False):
     if not isinstance(value, cell):
         if isinstance(value, dict):
-            return type(value)(**{k: cell_item(v, key) for k, v in value.items()})
+            try:
+                return type(value)(**{k: cell_item(v, key) for k, v in value.items()})
+            except TypeError:
+                if isinstance(value, dictable):
+                    return type(value)(**{str(k): cell_item(v, key) for k, v in value.items()})
+                else:
+                    return type(value)({k: cell_item(v, key) for k, v in value.items()})
+                
         else:
             return value
     output = cell_output(value)
@@ -77,7 +84,14 @@ def _cell_outputs(c):
         output = cell_output(c)
         return dictattr({key: c.get(key) for key in output})
     elif isinstance(c, dict):
-        return type(c)(**{k: _cell_outputs(v) for k, v in c.items()})
+        try:
+            return type(c)(**{k: _cell_outputs(v) for k, v in c.items()})
+        except TypeError:
+            if isinstance(c, dictable):
+                return type(c)(**{str(k): _cell_outputs(v) for k, v in c.items()})
+            else:
+                return type(c)({k: _cell_outputs(v) for k, v in c.items()})
+
     else:
         return c
 
@@ -115,7 +129,13 @@ def cell_clear(value):
     elif isinstance(value, (tuple, list)):
         return type(value)([cell_clear(v) for v in value])
     elif isinstance(value, dict):
-        return type(value)(**{k : cell_clear(v) for k, v in value.items()})
+        try:
+            return type(value)(**{k : cell_clear(v) for k, v in value.items()})
+        except TypeError:
+            if isinstance(value, dictable):
+                return type(value)(**{str(k): cell_clear(v) for k, v in value.items()})
+            else:
+                return type(value)({k: cell_clear(v) for k, v in value.items()})
     else:
         return value
 
@@ -161,7 +181,13 @@ def _cell_go(value, go, mode = 0):
             return value.go(go = go, mode = mode)
     else:
         if isinstance(value, dict):
-            return type(value)(**{k: _cell_go(v, go = go, mode = mode) for k, v in value.items()})
+            try:
+                return type(value)(**{k: _cell_go(v, go = go, mode = mode) for k, v in value.items()})
+            except TypeError:
+                if isinstance(value, dictable):
+                    return type(value)(**{str(k): _cell_go(v, go = go, mode = mode) for k, v in value.items()})
+                else:
+                    return type(value)({k: _cell_go(v, go = go, mode = mode) for k, v in value.items()})
         else:
             return value
 
@@ -207,7 +233,13 @@ def _cell_load(value, mode):
             return value.load(mode)
     else:
         if isinstance(value, dict):
-            return type(value)(**{k: _cell_load(v, mode) for k, v in value.items()})
+            try:
+                return type(value)(**{k: _cell_load(v, mode) for k, v in value.items()})
+            except TypeError:
+                if isinstance(value, dictable):
+                    return type(value)(**{str(k): _cell_load(v, mode) for k, v in value.items()})
+                else:
+                    return type(value)({k: _cell_load(v, mode) for k, v in value.items()})
         else:
             return value
 
@@ -1002,7 +1034,6 @@ def cell_inputs(value, types = cell):
         return list_instances(value._inputs, types)
     else:
         return list_instances(value, types)
-
 
 
 
