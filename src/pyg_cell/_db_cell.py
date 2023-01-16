@@ -1,4 +1,4 @@
-from pyg_base import eq, is_date, ulist, logger, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
+from pyg_base import eq, is_date, ulist, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ, CLSS
@@ -327,7 +327,7 @@ class db_cell(cell):
         db = db()
         missing = ulist(db._pk) - self.keys()
         if len(missing):
-            logger.warning('WARN: document not saved as some keys are missing %s'%missing)
+            self._logger.warning('WARN: document not saved as some keys are missing %s'%missing)
             return self            
         ref = type(doc)(**cell_clear(dict(doc)))
         try:
@@ -407,7 +407,7 @@ class db_cell(cell):
         pk = ulist(db._pk)
         missing = pk - self.keys()
         if len(missing):
-            logger.warning('WARN: document not loaded as some keys are missing %s'%missing)
+            self._logger.warning('WARN: document not loaded as some keys are missing %s'%missing)
             return self            
         address = self._address
         kwargs = {k : self[k] for k in pk}

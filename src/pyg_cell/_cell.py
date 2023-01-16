@@ -480,6 +480,7 @@ class cell(dictattr):
     """
     _func = cell_func 
     _awaitable = False
+    _logger = logger
     
     def __init__(self, function = None, output = None, **kwargs):
         if (len(kwargs) == 0 and isinstance(function, (Dict, cell))) or (isinstance(function,dict) and not callable(function)): 
@@ -556,7 +557,7 @@ class cell(dictattr):
         pk = ulist(sorted(as_list(self.get(_pk))))
         missing = pk - self.keys()
         if len(missing):
-            logger.warning('WARN: document not loaded as some keys are missing %s'%missing)
+            self._logger.warning('WARN: document not loaded as some keys are missing %s'%missing)
             return self     
         GRAPH = get_cache('GRAPH')
         if mode == -1:
@@ -735,7 +736,7 @@ class cell(dictattr):
                 msg = "get_cell(%s)()"%pairs
             else:
                 msg = str(address)
-            logger.info(msg)
+            self._logger.info(msg)
             args = spec.args
             kwonlyargs = spec.kwonlyargs
             defaults = [] if spec.defaults is None else spec.defaults
