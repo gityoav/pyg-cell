@@ -1,4 +1,4 @@
-from pyg_base import is_date, ulist, logger, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
+from pyg_base import eq, is_date, ulist, logger, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ, CLSS
