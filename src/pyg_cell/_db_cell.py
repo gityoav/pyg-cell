@@ -442,9 +442,8 @@ class db_cell(cell):
                 excluded_keys += as_list(mode)
             elif is_date(mode):
                 excluded_keys += [_id]
-            updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and 
-                              (type(saved[k])!=type(v) or (is_primitive(v) and saved[k]!=v))]
             update = (saved / None) - excluded_keys
+            updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and not isinstance(v, cell) and not eq(saved[k], v)]
             self.update(update)
             if len(updated_inputs):
                 self[_updated] = None
