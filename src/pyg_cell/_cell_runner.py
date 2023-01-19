@@ -80,7 +80,7 @@ class cell_runner(wrapper):
         kws.update(kwargs)
         kws = kws.relabel(self.args)
         if isinstance(self.function, cell):
-            res = self.function
+            res = self.function.copy()
         else:
             res = kws.apply(self.function)
         if isinstance(res, cell):
