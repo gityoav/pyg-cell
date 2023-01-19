@@ -79,7 +79,10 @@ class cell_runner(wrapper):
         kws.update(self.defaults)
         kws.update(kwargs)
         kws = kws.relabel(self.args)
-        res = kws.apply(self.function)
+        if isinstance(self.function, cell):
+            res = self.function
+        else:
+            res = kws.apply(self.function)
         if isinstance(res, cell):
             res.update(kws - res.keys())
             if self.db and isinstance(res, db_cell) and res.db is None:
