@@ -674,20 +674,21 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
                 t = DBS[mode](db = db, table = table, server = server or url, schema = schema, pk = pk, doc = doc or _doc)
                 qq = t.table.c
         else:
-            return GRAPH[address]
+            return GRAPH[address].copy()
         address = t.address + kwargs_address
         if _from_memory and deleted in (None, False): # we want the standard cell
             if address not in GRAPH:
                 doc = _load_asof(t, kwargs, deleted, qq)
                 if isinstance(doc, cell):
                     GRAPH[doc._address] = doc
-                return doc
+                return doc.copy()
             else:
-                return GRAPH[address]
+                return GRAPH[address].copy()
         else:
             return _load_asof(t, kwargs, deleted, qq) # must not overwrite live version. User wants a specific deleted version
     else:
-        return GRAPH[address]
+        print('got here')
+        return GRAPH[address].copy()
 
 
 def load_cell(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):

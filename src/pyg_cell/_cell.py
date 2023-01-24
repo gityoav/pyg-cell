@@ -13,6 +13,8 @@ _latest = 'latest'
 _function = 'function'
 _bind = 'bind'
 _pk = 'pk'
+_id = '_id'
+
 
 __all__ = ['cell', 'cell_item', 'cell_go', 'cell_load', 'cell_func', 'cell_output', \
            'cell_clear', ]
@@ -565,14 +567,22 @@ class cell(dictattr):
                 del GRAPH[address]
             return self
         if address is not None and address in GRAPH:
-            saved = GRAPH[address]
-            saved_updated = saved.get(_updated)
+            saved = GRAPH[address] 
             self_updated = self.get(_updated)
-            if is_date(saved_updated) and (self_updated is None or self_updated < saved_updated):
-                output = {key: value for key, value in saved.items() if (key in [_updated] + self._output and value is not None) or key not in self}
-                self.update(output)
-                if _are_any_inputs_updated(self, saved):
-                    self[_updated] = self_updated
+            saved_updated = saved.get(_updated)
+            if self_updated is None or (saved_updated is not None and saved_updated > self_updated):
+                excluded_keys = (self /  None).keys() - self._output - _updated
+            else:
+                excluded_keys = (self /  None).keys()
+            if is_strs(mode):
+                excluded_keys += as_list(mode)
+            elif is_date(mode):
+                excluded_keys += [_id]
+            update = (saved / None) - excluded_keys
+            updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and not isinstance(v, cell) and not eq(saved[k], v)]
+            self.update(update)
+            if len(updated_inputs):
+                self[_updated] = None
         return self
             
     def __call__(self, go = 0, mode = 0, **kwargs):
@@ -769,12 +779,12 @@ class cell(dictattr):
                 GRAPH = get_cache('GRAPH')
                 UPDATED = get_cache('UPDATED')
                 UPDATED[address] = datetime.datetime.now()
-                GRAPH[address] = c
+                GRAPH[address] = c.copy()
             return c
         else:
             if address:
                 GRAPH = get_cache('GRAPH')
-                GRAPH[address] = self
+                GRAPH[address] = self.copy()
             return self
             
 
@@ -878,7 +888,7 @@ class cell(dictattr):
         else:
             address = res._address
             if address:
-                GRAPH[address] = res
+                GRAPH[address] = res.copy()
             return res
         
     
@@ -1012,7 +1022,7 @@ class updated_cell(cell):
         else:
             address = res._address
             if address:
-                GRAPH[address] = res
+                GRAPH[address] = res.copy()
             return res
         
 def cell_inputs(value, types = cell):
