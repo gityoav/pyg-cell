@@ -236,11 +236,15 @@ Note that when we access the document, we get back the cell object and all its f
     >>> loaded_cell = db().inc(name = 'james', surname = 'dean')[0].go()
 
     2023-01-25 16:04:29,165 - pyg - INFO - get_cell(server = 'DESKTOP-LU5C5QF', db = 'test_db', schema = 'dbo', table = 'people', name = 'james', surname = 'dean')()
-    2023-01-25 16:04:29,532 - pyg - INFO - creating table: test_db.archived_dbo.people['name', 'surname', 'doc', 'deleted']    >>> assert loaded_cell.data == 6
+    2023-01-25 16:04:29,532 - pyg - INFO - creating table: test_db.archived_dbo.people['name', 'surname', 'doc', 'deleted']    
+    
+    >>> assert loaded_cell.data == 6
 ```
 
- 
-What is this new table? the cell manages persistency automatically, to ensure a full audit. The 'people' table has unique entries by name, surname, so the old cell is saved in the archived schema with another "deleted" primary key.
+Two things to observe: 
+
+* We decided that "c" as a cell, is not worth while saving in the database, that is fine and the graph can handle a mixture of persistent and transient cells: cell "d" that is persisted, will store internally the definition of c, and will calculate it every time it needs to calculate itself. 
+* What is this new archived_dbo.people table? the cell manages persistency automatically, to ensure a full audit trail. The 'people' table has unique entries by name, surname, so the previous run of "d" is saved in the archived schema with an additional "deleted" primary key.
 
 
 ### Example: The cell writer, and complicated objects within a document
