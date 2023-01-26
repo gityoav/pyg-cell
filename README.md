@@ -18,14 +18,13 @@ If you have used Luigi, or MDF, you will quickly see that pyg-cell is just bette
 
     :Example: The cell
     ------------------------
-```sh
+```
     >>> from pyg_base import * 
     >>> from pyg_sql import * 
     >>> from pyg_cell import * 
     >>> import datetime
-```
 
-    Here is a simple function:
+Here is a simple function:
 
 ```sh
 >>> def f(a, b):
