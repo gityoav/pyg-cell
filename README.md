@@ -256,14 +256,14 @@ We can just save the actual data items in files:
     >>> db = partial(sql_table, server = server, 
             db = 'test_db', table = 'people', schema = 'dbo', 
             pk = ['name', 'surname'], doc = True,
-            writer = 'c:/temp/%name/%surname.npy') 
+            writer = 'c:/temp/%name/%surname.npy') ## please save numpy arrays/pandas in local file syste, using this location as "root" for the document
 
     >>> a = pd.Series([1,2,3])
     >>> b = pd.Series([4,5,6])
     >>> c = db_cell(f, a = a, b = b, db = db, name = 'adam', surname = 'smith')()
 ```
     
-The document is saved in the sql people table, but the actual data is saved in the lcoal file:
+The document is saved in the sql people table, but the actual data is saved in the local files. Since there are three keys which are arrays/pandas, there will be three files:
 
 ```
     >>> import os
@@ -272,7 +272,7 @@ The document is saved in the sql people table, but the actual data is saved in t
     >>> assert os.path.exists('c:/temp/adam/smith/b')
 ```
 
-And the data can be read transparently:
+And the data can be read either via the cell interface:
     
 ```
     >>> get_cell(server = 'DESKTOP-LU5C5QF', db = 'test_db', schema = 'dbo', table = 'people', name = 'adam', surname = 'smith').data
@@ -294,10 +294,10 @@ Or directly from file:
 ```
 We support the following writers:
 
-    * 'c:/temp/%name/%surname.npy': save as .npy files
-    * 'c:/temp/%name/%surname.parquet': save pandas dataframe as .parquet file
-    * 'c:/temp/%name/%surname.pickle': save as .pickle files
-    * 'server/db/schema/table/%surname/%name.sql' : save as binaries in a sql table.
+    * 'c:/temp/%name/%surname.npy': save both arrays and pandas as .npy files
+    * 'c:/temp/%name/%surname.parquet': save pandas dataframe as .parquet file, numpy as npy
+    * 'c:/temp/%name/%surname.pickle': save everything as .pickle files
+    * 'server/db/schema/table/%surname/%name.sql' : pickle and save everything as binaries in a sql table.
 
 Here is an example:
     
@@ -338,9 +338,9 @@ The interface is unchanged though:
 
 
 ## Calculation scheduling
-db_cell, once calculated, will not need to run again (unless its inputs have changed)
+db_cell, once calculated, will not need to run again, unless we force it to recalculate, its inputs have changed or its output missing.
 However, you may want to schedule periodical recalculation and this is extremely simple.
-All you need to do is inherit from db_cell and implement a new run() method.
+All you need to do is inherit from db_cell and implement a new run() method. For that reason, all db_cells have an "updated" key, about when it was last calculated and "latest" which is the latest index in cell.data if data is a timeseries.
     
 Specifically, periodic_cell implements a simple scheduling mechanism so that periodic_cell(..., period = '1w') will re-calculate a week after the cell was last updated 
     
