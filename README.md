@@ -123,85 +123,6 @@ The data is also available based on the primary keys provided:
     >>> assert get_data(key = 'c') == 3
 ```
 
-### Example: re-calculation logic
-
-The default cell, once calculated and persisted in memory, will only recalculate if its function inputs change.
-The cell.run() method returns a boolean that determines if it needs running.
-
-```
-    >>> c = cell(f, a = 1, b = 2, pk = 'key', key = 'key')
-    >>> assert c.run()
-    >>> c = c()
-    >>> assert not c.run()
-    >>> c.some_parameter_unrelated_to_f = 0
-    >>> assert not c.run()
-    >>> c.a = 'some parameter'
-    >>> c.b = 'that is important to f'
-    >>> c = c() ## will recalculate
-    >>> assert c.data == 'some parameterthat is important to f'
-```
- 
-The data persists in the graph and we can now propagate both up and down the graph:
-
-```
-    >>> c.a = 3; c.b = 2
-    >>> c = c.push()    
-    2023-01-25 15:39:11,630 - pyg - INFO - get_cell(key = 'key')()
-    2023-01-25 15:39:11,636 - pyg - INFO - get_cell(name = 'james', surname = 'dean')()
-    2023-01-25 15:39:11,644 - pyg - INFO - get_cell(exchange = 'NYSE', item = 'price', stock = 'AAPL')()
-
-    >>> assert get_data(exchange = 'NYSE', item = 'price', stock = 'AAPL') == 15
-```
-
-We can also force a recalculation by calling e.go() or e(go = 1)
-
-```
-    >>> e = e.go()
-
-    2023-01-25 15:41:23,540 - pyg - INFO - get_cell(exchange = 'NYSE', item = 'price', stock = 'AAPL')()
-```
-    
-### Example: cells that use their outputs as an input
-
-```
-    >>> def daily_sample_prices(stock, data = None):
-    >>>     today = dt(0)
-    >>>     sampled_price = pd.Series(np.random.normal(0,1), [today])
-    >>>     if data is None:
-    >>>          return sampled_price
-    >>>     elif data.index[-1] == today:
-    >>>          return data
-    >>>     else:
-    >>>          return pd.concat([data, sampled_price])
-```
-
-Here, we deliberately used the existing output to feed back into the cell to decide if we want to resample:
-
-```
-    >>> c = cell(daily_sample_prices, stock = 'AAPL', pk= ['stock', 'item'], item = 'price')()
-
-    2023-01-25 15:48:11,629 - pyg - INFO - get_cell(item = 'price', stock = 'AAPL')()
-
-    >>> get_data(item = 'price', stock = 'AAPL')  
-    >>> c.data    
-    2023-01-25    0.228306
-    dtype: float64
-    
-    >>> c.data = pd.Series(['old', 'data'], [dt(-2), dt(-1)])
-    >>> c = c(); c.data    
-
-    2023-01-25 15:49:52,968 - pyg - INFO - get_cell(item = 'price', stock = 'AAPL')()
-    Out[107]: 
-    2023-01-23         old
-    2023-01-24        data
-    2023-01-25   -1.694927  <--- added a new sample
-    dtype: object
-
-```
-
-If you are a techie, your gut reaction is to complain: There is ambiguity and there is no "inputs" name space and "outputs" name space. 
-This may cause confusion, but in practice allows us to switch from an "calculate everything historically" to "run online one at a time" with ease.
-For example, if the calculation is very expensive, (e.g. some optimization result) being able to say "and here is the last time you ran it so run data only for today" is very useful indeed and requires this complexity to be kept just within the function.
 
 
 ### Example: persistency in a database
@@ -337,7 +258,90 @@ The interface is unchanged though:
 ```
 
 
-## Calculation scheduling
+### Example: cells that use their outputs as an input
+
+```
+    >>> def daily_sample_prices(stock, data = None):
+    >>>     today = dt(0)
+    >>>     sampled_price = pd.Series(np.random.normal(0,1), [today])
+    >>>     if data is None:
+    >>>          return sampled_price
+    >>>     elif data.index[-1] == today:
+    >>>          return data
+    >>>     else:
+    >>>          return pd.concat([data, sampled_price])
+```
+
+Here, we deliberately used the existing output to feed back into the cell to decide if we want to resample:
+
+```
+    >>> c = cell(daily_sample_prices, stock = 'AAPL', pk= ['stock', 'item'], item = 'price')()
+
+    2023-01-25 15:48:11,629 - pyg - INFO - get_cell(item = 'price', stock = 'AAPL')()
+
+    >>> get_data(item = 'price', stock = 'AAPL')  
+    >>> c.data    
+    2023-01-25    0.228306
+    dtype: float64
+    
+    >>> c.data = pd.Series(['old', 'data'], [dt(-2), dt(-1)])
+    >>> c = c(); c.data    
+
+    2023-01-25 15:49:52,968 - pyg - INFO - get_cell(item = 'price', stock = 'AAPL')()
+    Out[107]: 
+    2023-01-23         old
+    2023-01-24        data
+    2023-01-25   -1.694927  <--- added a new sample
+    dtype: object
+
+```
+
+If you are a techie, your gut reaction is to complain: There is ambiguity and there is no "inputs" name space and "outputs" name space. 
+This may cause confusion, but in practice allows us to switch from an "calculate everything historically" to "run online one at a time" with ease.
+For example, if the calculation is very expensive, (e.g. some optimization result) being able to say "and here is the last time you ran it so run data only for today" is very useful indeed.
+
+If you used e.g. mdf, and saw the slightly convoluted way you need to decorate all your functions to be able to handle this issue, you will appreciate the explicit way that we push the complexity to be handled internally only by specific functions that need this feature. 
+
+
+## Calculation logic
+
+The default cell, once calculated and persisted in memory, will only recalculate if its function inputs change.
+The cell.run() method returns a boolean that determines if it needs running.
+
+```
+    >>> c = cell(f, a = 1, b = 2, pk = 'key', key = 'key')
+    >>> assert c.run()
+    >>> c = c()
+    >>> assert not c.run()
+    >>> c.some_parameter_unrelated_to_f = 0
+    >>> assert not c.run()
+    >>> c.a = 'some parameter'
+    >>> c.b = 'that is important to f'
+    >>> c = c() ## will recalculate
+    >>> assert c.data == 'some parameterthat is important to f'
+```
+ 
+The data persists in the graph and we can now propagate both up and down the graph:
+
+```
+    >>> c.a = 3; c.b = 2
+    >>> c = c.push()    
+    2023-01-25 15:39:11,630 - pyg - INFO - get_cell(key = 'key')()
+    2023-01-25 15:39:11,636 - pyg - INFO - get_cell(name = 'james', surname = 'dean')()
+    2023-01-25 15:39:11,644 - pyg - INFO - get_cell(exchange = 'NYSE', item = 'price', stock = 'AAPL')()
+
+    >>> assert get_data(exchange = 'NYSE', item = 'price', stock = 'AAPL') == 15
+```
+
+We can also force a recalculation by calling e.go() or e(go = 1)
+
+```
+    >>> e = e.go()
+
+    2023-01-25 15:41:23,540 - pyg - INFO - get_cell(exchange = 'NYSE', item = 'price', stock = 'AAPL')()
+```
+
+### Changing the calculation scheduling
 db_cell, once calculated, will not need to run again, unless we force it to recalculate, its inputs have changed or its output missing.
 However, you may want to schedule periodical recalculation and this is extremely simple.
 All you need to do is inherit from db_cell and implement a new run() method. For that reason, all db_cells have an "updated" key, about when it was last calculated and "latest" which is the latest index in cell.data if data is a timeseries.
