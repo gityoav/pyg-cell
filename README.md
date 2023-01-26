@@ -346,11 +346,13 @@ However, you may want to schedule periodical recalculation and this is extremely
 All you need to do is inherit from db_cell and implement a new run() method. For that reason, all db_cells have an "updated" key, about when it was last calculated and "latest" which is the latest index in cell.data if data is a timeseries.
     
 Specifically, periodic_cell implements a simple scheduling mechanism so that periodic_cell(..., period = '1w') will re-calculate a week after the cell was last updated 
-    
-Interestingly, that's pretty much it. There is very little the user needs to do to. The framework:
 
-    1) creates well-structured flow.
-    2) has no boiler-plate
-    3) saves and persists the data in nicely indexed tables with primary keys decided by use
-    4) allows you to save the actual data either as files or within mongo/sql dbs as doc-stores.
+## Conclusions
+
+The cell frameworks allows the user to:
+
+1) create well-structured flow.
+2) has no boiler-plate
+3) saves and persists the data in nicely indexed tables with primary keys decided by user, no more any nasty key = "THIS_US_INDUSTRY_TECH_STOCK_AAPL_OPTION_CALL_EXPIRY_2023_TOO_LONG_TICKER"
+4) allows you to save the actual data either as npy/parquet/pickle files or within mongo/sql dbs as doc-stores.
     
