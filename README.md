@@ -42,7 +42,7 @@ Here is a simple function:
     >>> assert cde == 18
 ```
 
-    The cell version looks like this:
+The cell version looks like this:
 
 ```
     >>> c = cell(f, a = 1, b = 2)()  ##  we call the cell to evaluate it
@@ -71,8 +71,8 @@ Here is a simple function:
 ```
 
     
-    Note that we didn't need to declare anything, nor to modify f to take a cell or a list of cells (or indeed a dict of cells) as an input etc. 
-    This is all done behind the scene to keep the API simple
+Note that we didn't need to declare anything, nor to modify f to take a cell or a list of cells (or indeed a dict of cells) as an input etc. 
+This is all done behind the scene to keep the API simple
     
 ### Example: The in-memory graph
 
