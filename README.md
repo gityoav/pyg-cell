@@ -70,14 +70,14 @@ The cell version looks like this:
 ```
 
     
-Note that we didn't need to declare anything, nor to modify f to take a cell or a list of cells (or indeed a dict of cells) as an input etc. 
-This is all done behind the scene to keep the API simple
+Note that we didn't need to declare, not wrap nor modify f to take a cell as an input. sum_a_list also works out-of-the-box, happy to take a list of cells as an input. 
+This is all done behind the scene to keep the API simple: in many frameworks, you need to reformulate the function for a specific shape of inputs to be able to include it in the graph.
     
 ### Example: The in-memory graph
 
-There is no graph until we decide the primary keys we will use to save the cell in the graph.
-Rather than pre-decide what the key is, cell allows you to specify your own primary keys.
-You then you need to provide these keys, to ensure cell is registered with the graph:
+A cell is not part of a graph until we decide the primary keys we will use to save it in the graph.
+Rather than pre-decide what the "key" is, pyg-cell allows you to specify your own primary keys.
+You then you need to provide these keys:
 
 ```
     >>> c = cell(f, a = 1, b = 2, pk = 'key', key = 'c')()
@@ -116,15 +116,14 @@ In fact, the log is now executable:
         2023-01-24 18:34:47.983135
 ```
     
-The data is also available based on the primary keys provided:
+This is incredibly useful when debugging: a program will run and the last cell to fail will be instantly obvious. 
+If you want just the data, the data is available based on the primary keys provided:
 
 ```
     >>> assert get_data(key = 'c') == 3
 ```
 
-
-
-### Example: persistency in a database
+### Example: Cell persistency in a database
 
 The db_cell/document will be stored in a document store. You can choose either a MongoDB (using pyg_mongo) or MS SQL database (pyg_sql)
 
@@ -134,8 +133,8 @@ The db_cell/document will be stored in a document store. You can choose either a
     >>> server = 'DESKTOP-LU5C5QF'
     
     >>> db = partial(sql_table, server = server, db = 'test_db', table = 'people', schema = 'dbo', pk = ['name', 'surname'], doc = True) ## table is a doc-store
-    >>> c = cell(f, a = 1, b = 2, pk = 'key', key = 'c')
-    >>> d = db_cell(f, a = c, b = c, db = db, name = 'james', surname = 'dean')()
+    >>> transient = cell(f, a = 1, b = 2, pk = 'key', key = 'transient')
+    >>> d = db_cell(f, a = transient, b = transient, db = db, name = 'james', surname = 'dean')()
     
     2023-01-25 16:00:43,395 - pyg - INFO - creating table: test_db.dbo.people['name', 'surname', 'doc']
     2023-01-25 16:00:45,210 - pyg - INFO - get_cell(server = 'DESKTOP-LU5C5QF', db = 'test_db', schema = 'dbo', table = 'people', name = 'james', surname = 'dean')()
@@ -150,7 +149,7 @@ And indeed the data is now available in the table, either directly using get_cel
 ```
 
 
-Note that when we access the document, we get back the cell object and all its functionality.
+Note that when we access the document, we get back the cell object and all its functionality, not just the data:
     
 ```
     >>> loaded_cell = db().inc(name = 'james', surname = 'dean')[0].go()
@@ -163,8 +162,8 @@ Note that when we access the document, we get back the cell object and all its f
 
 Two things to observe: 
 
-* We decided that "c" as a cell, is not worth while saving in the database, that is fine and the graph can handle a mixture of persistent and transient cells: cell "d" that is persisted, will store internally the definition of c, and will calculate it every time it needs to calculate itself. 
-* What is this new archived_dbo.people table? the cell manages persistency automatically, to ensure a full audit trail. The 'people' table has unique entries by name, surname, so the previous run of "d" is saved in the archived schema with an additional "deleted" primary key.
+* We decided that "transient" as a cell, is not worth while saving in the database, that is fine and the graph can handle a mixture of persistent and transient cells: cell "d" that is persisted, will store internally the definition of "transient", and will calculate it every time it needs to calculate itself. 
+* What is this new archived_dbo.people table? the cell manages persistency automatically, to ensure a full audit trail and point-in-time. The 'people' table has unique entries by name, surname, so the previous run of "d" is saved in the archived schema with an additional "deleted" primary key.
 
 
 ### Example: The cell writer, and complicated objects within a document
