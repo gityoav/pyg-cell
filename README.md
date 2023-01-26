@@ -37,7 +37,7 @@ Here is a simple function:
     >>> c = f(a = 1, b = 2)
     >>> d = f(a = c, b = c)
     >>> e = f(a = c, b = d)
-    >>> cde = sum_a_list([c,d,e])
+    >>> cde = sum_a_list(values = [c,d,e])
     >>> assert e == 9
     >>> assert cde == 18
 ```
