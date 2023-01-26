@@ -97,7 +97,7 @@ Here is what the log looks like:
 In fact, the log is now executable:
     
 ```
-    >>> get_cell(key = 'c')
+    >>> get_cell(key = 'c')()
     cell
     a:
         1
@@ -120,7 +120,7 @@ In fact, the log is now executable:
 The data is also available based on the primary keys provided:
 
 ```
-    >>> assert get_data(key = 'e') == 9
+    >>> assert get_data(key = 'c') == 3
 ```
 
 ### Example: re-calculation logic
