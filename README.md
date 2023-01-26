@@ -18,14 +18,17 @@ If you have used Luigi, or MDF, you will quickly see that pyg-cell is just bette
 
     :Example: The cell
     ------------------------
+```sh
     >>> from pyg_base import * 
     >>> from pyg_sql import * 
     >>> from pyg_cell import * 
     >>> import datetime
+```
 
     Here is a simple function:
-    
-    >>> def f(a, b):
+
+```sh
+>>> def f(a, b):
     >>>     return a + b
 
     >>> def sum_a_list(values):
@@ -37,9 +40,10 @@ If you have used Luigi, or MDF, you will quickly see that pyg-cell is just bette
     >>> cde = sum_a_list([c,d,e])
     >>> assert e == 9
     >>> assert cde == 18
-    
+```
+
     The cell version looks like this:
-    
+```sh
     >>> c = cell(f, a = 1, b = 2)()  ##  we call the cell to evaluate it
     >>> d = cell(f, a = c, b = c)()
     >>> e = cell(f, a = c, b = d)()
@@ -63,6 +67,7 @@ If you have used Luigi, or MDF, you will quickly see that pyg-cell is just bette
         None                           
     updated:
         2023-01-24 18:26:04.951482     ## last calculated
+```
 
     
     Note that we didn't need to declare anything, nor to modify f to take a cell or a list of cells (or indeed a dict of cells) as an input etc. 
