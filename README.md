@@ -1,6 +1,6 @@
 # pyg-cell
 
-pip install from https://pypi.org/project/pyg-cell/
+pip install from https://pypi.org/project/pyg-cell/. The project will conda-build as well if you need this to run within a conda environment.
 
 ## Introduction
 pyg-cell is a light-weight framework for constructing calculation graphs in Python. 
