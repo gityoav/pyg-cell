@@ -353,6 +353,6 @@ The cell frameworks allows the user to:
 
 1) create well-structured flow.
 2) has no boiler-plate
-3) saves and persists the data in nicely indexed tables with primary keys decided by user, no more any nasty key = "THIS_US_INDUSTRY_TECH_STOCK_AAPL_OPTION_CALL_EXPIRY_2023_TOO_LONG_TICKER"
+3) saves and persists the data in nicely indexed tables with primary keys decided by user, no more any nasty key = "COUNTRY_US_INDUSTRY_TECH_STOCK_AAPL_OPTION_CALL_EXPIRY_2023M_STRIKE_100_TOO_LONG_TICKER"
 4) allows you to save the actual data either as npy/parquet/pickle files or within mongo/sql dbs as doc-stores.
     
