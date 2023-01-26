@@ -5,9 +5,9 @@ pip install from https://pypi.org/project/pyg-cell/
 ## Introduction
 pyg-cell is a light-weight framework for constructing calculation graphs in Python. 
 There are a few open-source similar frameworks: Luigi (https://github.com/spotify/luigi), MDF (https://github.com/man-group/mdf)
-and various financial variations such as JP Morgan Athena (https://www.youtube.com/watch?v=3ygPF-Qshkc) and Beacon (https://www.beacon.io/)
+and various financial variations such as JP Morgan Athena (https://www.youtube.com/watch?v=3ygPF-Qshkc) BAML's Quartz and Goldman's SecDB, the daddy of all calculation graphs. A version of these is available commercially by Beacon (https://www.beacon.io/)
 
-If you have used Luigi, or MDF, you will quickly see that pyg-cell is just better.
+If you have used Luigi, mdf or indeed any of the above, you will quickly see that pyg-cell is just much easier to use.
 
 * incredibly flexible and yet entirely boiler-plate free. 
 * supports functions that returns multiple values
