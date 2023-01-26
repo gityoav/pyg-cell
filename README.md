@@ -15,9 +15,8 @@ If you have used Luigi, mdf or indeed any of the above, you will quickly see tha
 * easy to persist, modify, extend, save in sql, mongo, parquet/npy/pickle files
 * easy to control scheduling logic
 
+### Example: The cell
 
-    :Example: The cell
-    ------------------------
 ```
     >>> from pyg_base import * 
     >>> from pyg_sql import * 
