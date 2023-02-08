@@ -1,4 +1,4 @@
-from pyg_base import eq, is_date, ulist, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
+from pyg_base import dt, eq, is_date, ulist, is_primitive, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ, CLSS
@@ -128,41 +128,61 @@ def db_load(value, mode = 0):
 
 
 def _load_asof(table, kwargs, deleted, qq = None):  
-    t = table.inc(kwargs)
-    live = t
+    """
+    loads the data asof a particular date in deleted.
+
+    Logic:    
+    ------
+    Our base table is table.inc(kwargs)
+        
+    if deleted is False: 
+        we ignore the deleted table completely, returning just the live document
+    if deleted is True:
+        we ignore the live table and return the simulation last deleted document
+    if deleted is None:
+        we return the live document if available. if not, the last deleted document
+    if deleted is a date:
+        We look at documents deleted AFTER deleted date. 
+        if there are such documents:
+            we return the earliest of those, assuming it was alive at deleted
+        if there are no such documents, we return the live document if available
+        
+    """
+    live = table.inc(kwargs)
     l = len(live)
-    if deleted in (False, None): # we just want live values
-        if l == 0:
-            raise ValueError('no undeleted cells found matching %s in \n%s'%(kwargs, live))        
+    if deleted is False: # we just want live values
+        if l == 1:
+            return live[0]
         elif l>1:
-            raise ValueError('multiple cells found matching %s in \n%a'%(kwargs, live))
+            raise ValueError(f'multiple cells found in \n{live}')
+        elif l == 0:
+            raise ValueError(f'no live cells found in \n{live}')
+    past = table.deleted.inc(kwargs)
+    if deleted is True: ## we want the latest
+        if len(past):
+            return past.sort('deleted')[-1]
+        else:
+            raise ValueError(f'no deleted cells found in \n{past}')
+    if deleted is None:  
+        if l == 1:
+            return live[0]
+        elif l>1:
+            raise ValueError(f'multiple cells found in \n{live}')
+        elif len(past):
+            return past.sort('deleted')[-1]
+        else:
+            raise ValueError(f'no live cells found in \n{live}\nnor deleted cells found in \n{past}')
+    
+    past = past.inc(qq['deleted'] > dt(deleted))
+    if len(past):
+        return past.sort('deleted')[0]
+    elif l == 1:
         return live[0]
-    else:  
-        qq = _get_qq(qq, table)
-        past = t.deleted if deleted is True else t.deleted.inc(qq['deleted'] > deleted) ## it is possible to have cells with deleted in self
-        p = len(past)
-        if p == 1:
-            return past[0]
-        elif p > 1:
-            if deleted is True:
-                raise ValueError('multiple historic cells are avaialble %s with these dates: %s. set delete = DATE to find the cell on that date in \n%s'%(kwargs, past.deleted, past))
-            else:
-                return past.sort('deleted')[0]
-        else:    ## no records found in past, we go to the deleted history
-            history = t.deleted if deleted is True else t.deleted.inc(qq['deleted'] > deleted) #cells deleted after deleted date
-            h = len(history)
-            if h == 0:
-                if l > 0:
-                    raise ValueError('no deleted cells found matching %s but a live one exists. Set deleted = False to get it, in \n%s'%(kwargs, history))        
-                else:                   
-                    raise ValueError('no deleted cells found matching %s in \n%s'%(kwargs, history))        
-            elif h>1:
-                if deleted is True:
-                    raise ValueError('multiple historic cells are avaialble %s with these dates: %s. set delete = DATE to find the cell on that date, in \n%s'%(kwargs, history.deleted, history))
-                else:
-                    return history.sort('deleted')[0]
-            else:
-                return history[0]
+    elif l>1:
+        raise ValueError(f'multiple cells found in \n{live}')
+    elif l == 0:
+        raise ValueError(f'no live cells found in \n{live}\nnor deleted cells found in \n{past}')
+
 
 import datetime
 def _is_primitive(value):
@@ -584,7 +604,7 @@ def cell_pull(nodes, types = cell):
 
 
 
-def _get_cell(table = None, db = None, url = None, schema = None, server = None, deleted = None, _from_memory = None, doc = None, **kwargs):
+def _get_cell(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. In addition, can look at earlier versions using deleted.
     It is important to note that this DOES NOT go through the cache mechanism but goes to the database directly every time.
@@ -602,9 +622,10 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
         mongodb server location. The default is None.
     server : str or True, optional
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
-    deleted : datetime/None, optional
+    deleted : datetime/None/False, optional
         The date corresponding to the version of the cell we want
-        None = live cell
+        False = only live cell
+        
         otherwise, the cell that was first deleted after this date.
     **kwargs : keywords
         key words for grabbing the cell.
@@ -629,7 +650,6 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
                                                          server = server,
                                                          schema = schema, 
                                                          deleted = deleted,
-                                                         _from_memory = _from_memory
                                                          ).items() if value is not None})
         params.update(kwargs)
         return _get_cell(**params)
@@ -648,7 +668,7 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
         pk = sorted(as_list(pk))
         address = kwargs_address = tuple([(key, kwargs.get(key)) for key in pk]) 
     
-    mode = _get_mode(url, server, schema = schema)    
+    mode = _get_mode(url, server, schema = schema) ## which database
     if table is not None:
         if is_partial(table):
             t = table()
@@ -676,22 +696,25 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
         else:
             return GRAPH[address].copy()
         address = t.address + kwargs_address
-        if _from_memory and deleted in (None, False): # we want the standard cell
+        if address in GRAPH:
+            doc = GRAPH[address]
+            if deleted is False or deleted is None:
+                return doc.copy()
+        if deleted is False: 
             if address not in GRAPH:
-                doc = _load_asof(t, kwargs, deleted, qq)
+                doc = _load_asof(table = t, kwargs = kwargs, deleted = deleted, qq = qq)
                 if isinstance(doc, cell):
                     GRAPH[doc._address] = doc
                 return doc.copy()
             else:
                 return GRAPH[address].copy()
         else:
-            return _load_asof(t, kwargs, deleted, qq) # must not overwrite live version. User wants a specific deleted version
+            return _load_asof(table = t, kwargs = kwargs, deleted = deleted, qq = qq) # must not overwrite live version. User wants a specific deleted version
     else:
-        print('got here')
         return GRAPH[address].copy()
 
 
-def load_cell(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):
+def load_cell(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. 
     In addition, can look at earlier versions using deleted.
@@ -753,7 +776,7 @@ def get_docs(table = None, db = None, url = None, schema = None, server = None, 
     return t.docs(list(kwargs.keys()))
 
     
-def get_cell(table = None, db = None, schema = None, url = None, server = None, deleted = None, doc = None, **kwargs):
+def get_cell(table = None, db = None, schema = None, url = None, server = None, deleted = False, doc = None, **kwargs):
     """
     unlike load_cell which will get the data from the database by default 
     get cell looks at the in-memory cache to see if the cell exists there.
@@ -768,10 +791,29 @@ def get_cell(table = None, db = None, schema = None, url = None, server = None, 
         mongodb server location. The default is None.
     server : str or True, optional
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
-    deleted : datetime/None, optional
-        The date corresponding to the version of the cell we want
-        None = live cell
-        otherwise, the cell that was first deleted after this date.
+    
+    deleted : datetime/None/True/False, optional.
+        There are possible multiple documents available:
+            - the in-memory one, in the graph
+            - the one in the live table, presumably an earlier version
+            - the ones in the deleted table.
+    
+        We use "deleted" to choose between the documents that are available.
+
+        The logic we follow is this:
+
+        if deleted is False: (default)
+            we ignore the deleted table completely, returning just the live document from graph or database
+        if deleted is True:
+            we ignore the live table and the graph and return the last deleted document
+        if deleted is None:
+            we return the graph if available, document in live table if available. if not, the last deleted document
+        if deleted is a date:
+            We look at documents deleted AFTER deleted date. 
+            if there are such documents:
+                we return the earliest of those, assuming it was alive at deleted
+            if there are no such documents, we return the document in live table if available or the graph document
+
     **kwargs : keywords
         key words for grabbing the cell.
 
@@ -786,30 +828,29 @@ def get_cell(table = None, db = None, schema = None, url = None, server = None, 
     >>> brown = db_cell(db = people, name = 'bob', surname = 'brown', age = 39).save()
     >>> assert get_cell('test','test', surname = 'brown').name == 'bob'
     """
-    _from_memory = kwargs.pop('_from_memory', True)
     params = dict(table = table, db = db, url = url, server = server, deleted = deleted, schema = schema)
     params.update(kwargs)
     multiples = {k : v for k, v in params.items() if isinstance(v, list)}
     if len(multiples) == 0:
-        return _get_cell(_from_memory = _from_memory, doc = doc, **params)
+        return _get_cell(doc = doc, **params)
     elif len(multiples) == 1:
         res = []
         for key, values in multiples.items():
             for value in values:
                 params.update({key : value})
-                res.append(_get_cell(_from_memory = _from_memory, doc = doc, **params))
+                res.append(_get_cell(doc = doc, **params))
         return res
     else:
         res = dictable(params)
         docs = []
         for row in res:
             params.update(row)
-            docs.append(_get_cell(_from_memory = _from_memory, doc = doc, **params))
+            docs.append(_get_cell(doc = doc, **params))
         res[doc or _doc] = docs
         return res
 
 
-def get_data(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):
+def get_data(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. 
     In addition, can look at earlier versions using deleted.
@@ -852,7 +893,7 @@ def get_data(table = None, db = None, url = None, schema = None, server = None, 
         return cell_item(cells, key = 'data')
 
 
-def load_data(table = None, db = None, url = None, schema = None, server = None, deleted = None, doc = None, **kwargs):
+def load_data(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. 
     In addition, can look at earlier versions using deleted.
