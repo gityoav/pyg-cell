@@ -173,7 +173,11 @@ def _load_asof(table, kwargs, deleted, qq = None):
         else:
             raise ValueError(f'no live cells found in \n{live}\nnor deleted cells found in \n{past}')
     
-    past = past.inc(qq['deleted'] > dt(deleted))
+    if qq is None:
+        past = past.inc(past.c.deleted > dt(deleted))
+    else:
+        past = past.inc(qq['deleted'] > dt(deleted))
+
     if len(past):
         return past.sort('deleted')[0] 
     elif l == 1:
@@ -674,14 +678,14 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
             t = table()
             if table.func == DBS.get('sql'):
                 mode = 'sql'
-                qq = t.table.c
+                qq = None
             elif table.func == DBS.get('mongo'):
                 mode = 'mongo'
                 qq = QQ[mode]
         elif 'sql' in CLSS and isinstance(table, CLSS['sql']):
             t = table
             mode = 'sql'
-            qq = t.table.c
+            qq = None
         elif 'mongo' in CLSS and isinstance(table, CLSS['mongo']):
             t = table
             mode = 'mongo'
@@ -692,7 +696,7 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
                 qq = QQ[mode]
             elif mode == 'sql':
                 t = DBS[mode](db = db, table = table, server = server or url, schema = schema, pk = pk, doc = doc or _doc)
-                qq = t.table.c
+                qq = None
         else:
             if _use_graph:
                 return GRAPH[address].copy()
