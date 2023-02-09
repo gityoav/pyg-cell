@@ -158,7 +158,7 @@ def _load_asof(table, kwargs, deleted, qq = None):
         elif l == 0:
             raise ValueError(f'no live cells found in \n{live}')
     past = table.deleted.inc(kwargs)
-    if deleted is True: ## we want the latest
+    if deleted is True: ## we want the latest deleted
         if len(past):
             return past.sort('deleted')[-1]
         else:
@@ -168,14 +168,14 @@ def _load_asof(table, kwargs, deleted, qq = None):
             return live[0]
         elif l>1:
             raise ValueError(f'multiple cells found in \n{live}')
-        elif len(past):
+        elif len(past): ## return latest deleted
             return past.sort('deleted')[-1]
         else:
             raise ValueError(f'no live cells found in \n{live}\nnor deleted cells found in \n{past}')
     
     past = past.inc(qq['deleted'] > dt(deleted))
     if len(past):
-        return past.sort('deleted')[0]
+        return past.sort('deleted')[0] 
     elif l == 1:
         return live[0]
     elif l>1:
@@ -604,7 +604,7 @@ def cell_pull(nodes, types = cell):
 
 
 
-def _get_cell(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, **kwargs):
+def _get_cell(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, _use_graph = True, **kwargs):
     """
     retrieves a cell from a table in a database based on its key words. In addition, can look at earlier versions using deleted.
     It is important to note that this DOES NOT go through the cache mechanism but goes to the database directly every time.
@@ -694,20 +694,17 @@ def _get_cell(table = None, db = None, url = None, schema = None, server = None,
                 t = DBS[mode](db = db, table = table, server = server or url, schema = schema, pk = pk, doc = doc or _doc)
                 qq = t.table.c
         else:
-            return GRAPH[address].copy()
+            if _use_graph:
+                return GRAPH[address].copy()
         address = t.address + kwargs_address
-        if address in GRAPH:
-            doc = GRAPH[address]
-            if deleted is False or deleted is None:
-                return doc.copy()
-        if deleted is False: 
-            if address not in GRAPH:
+        if deleted is False or deleted is None: 
+            if _use_graph and address in GRAPH:
+                return GRAPH[address].copy()
+            else:
                 doc = _load_asof(table = t, kwargs = kwargs, deleted = deleted, qq = qq)
-                if isinstance(doc, cell):
+                if isinstance(doc, cell) and _use_graph:
                     GRAPH[doc._address] = doc
                 return doc.copy()
-            else:
-                return GRAPH[address].copy()
         else:
             return _load_asof(table = t, kwargs = kwargs, deleted = deleted, qq = qq) # must not overwrite live version. User wants a specific deleted version
     else:
@@ -731,10 +728,26 @@ def load_cell(table = None, db = None, url = None, schema = None, server = None,
         mongodb server location. The default is None.
     server : str or True, optional
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
-    deleted : datetime/None, optional
-        The date corresponding to the version of the cell we want
-        None = live cell
-        otherwise, the cell that was first deleted after this date.
+    deleted : datetime/None/True/False, optional.
+        There are multiple documents sources available:
+            - the one in the live table
+            - the ones in the deleted table.
+    
+        We use "deleted" parameter to choose between the documents that are available.
+
+        The logic we follow is this:
+
+        if deleted is False: (default)
+            we ignore the deleted table completely, returning just the live document from database, otherwise we throw.
+        if deleted is None:
+            we return the document in live table if available. if not, the last deleted document
+        if deleted is True:
+            we ignore the live table and the graph and return the last deleted document
+        if deleted is a date:
+            We look at documents deleted AFTER deleted date. 
+            if there are such documents:
+                we return the earliest of those, assuming it was alive at deleted
+            if there are no such documents, we return the document in live table if available
     **kwargs : keywords
         key words for grabbing the cell.
 
@@ -750,7 +763,7 @@ def load_cell(table = None, db = None, url = None, schema = None, server = None,
     >>> assert load_cell('test','test', surname = 'brown').name == 'bob'
         
     """
-    return _get_cell(table = table, db = db, url = url, schema = schema, deleted = deleted, server = server, doc = doc, **kwargs)
+    return _get_cell(table = table, db = db, url = url, schema = schema, deleted = deleted, server = server, doc = doc, _use_graph = False, **kwargs)
 
 def get_docs(table = None, db = None, url = None, schema = None, server = None, pk = None, cell = 'data', doc = None, **kwargs):
     """
@@ -803,16 +816,16 @@ def get_cell(table = None, db = None, schema = None, url = None, server = None, 
         The logic we follow is this:
 
         if deleted is False: (default)
-            we ignore the deleted table completely, returning just the live document from graph or database
-        if deleted is True:
-            we ignore the live table and the graph and return the last deleted document
+            we ignore the deleted table completely, returning just the live document from graph or database, otherwise we throw.
         if deleted is None:
             we return the graph if available, document in live table if available. if not, the last deleted document
+        if deleted is True:
+            we ignore the live table and the graph and return the last deleted document
         if deleted is a date:
             We look at documents deleted AFTER deleted date. 
             if there are such documents:
                 we return the earliest of those, assuming it was alive at deleted
-            if there are no such documents, we return the document in live table if available or the graph document
+            if there are no such documents, we return the document in live table if available
 
     **kwargs : keywords
         key words for grabbing the cell.
@@ -865,16 +878,34 @@ def get_data(table = None, db = None, url = None, schema = None, server = None, 
         mongodb server location. The default is None.
     server : str or True, optional
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
-    deleted : datetime/None, optional
-        The date corresponding to the version of the cell we want
-        None = live cell
-        otherwise, the cell that was first deleted after this date.
+    deleted : datetime/None/True/False, optional.
+        There are possible multiple documents available:
+            - the in-memory one, in the graph
+            - the one in the live table, presumably an earlier version
+            - the ones in the deleted table.
+    
+        We use "deleted" to choose between the documents that are available.
+
+        The logic we follow is this:
+
+        if deleted is False: (default)
+            we ignore the deleted table completely, returning just the live document from graph or database, otherwise we throw.
+        if deleted is None:
+            we return the graph if available, document in live table if available. if not, the last deleted document
+        if deleted is True:
+            we ignore the live table and the graph and return the last deleted document
+        if deleted is a date:
+            We look at documents deleted AFTER deleted date. 
+            if there are such documents:
+                we return the earliest of those, assuming it was alive at deleted
+            if there are no such documents, we return the document in live table if available
+
     **kwargs : keywords
         key words for grabbing the cell.
 
     :Returns:
     -------
-    The document
+    The document data
 
     :Example:
     ---------
@@ -895,7 +926,7 @@ def get_data(table = None, db = None, url = None, schema = None, server = None, 
 
 def load_data(table = None, db = None, url = None, schema = None, server = None, deleted = False, doc = None, **kwargs):
     """
-    retrieves a cell from a table in a database based on its key words. 
+    retrieves a cell from a table in a database based on its key words, ignoring the in-memory graph document 
     In addition, can look at earlier versions using deleted.
 
     :Parameters:
@@ -908,18 +939,34 @@ def load_data(table = None, db = None, url = None, schema = None, server = None,
         mongodb server location. The default is None.
     server : str or True, optional
         sql server location. The default is None (default to mongodb). Set to True to map to default sql server configured in cfg['sql_server']
-        
-        
-    deleted : datetime/None, optional
-        The date corresponding to the version of the cell we want
-        None = live cell
-        otherwise, the cell that was first deleted after this date.
+
+    deleted : datetime/None/True/False, optional.
+        There are multiple documents sources available:
+            - the one in the live table
+            - the ones in the deleted table.
+    
+        We use "deleted" parameter to choose between the documents that are available.
+
+        The logic we follow is this:
+
+        if deleted is False: (default)
+            we ignore the deleted table completely, returning just the live document from database, otherwise we throw.
+        if deleted is None:
+            we return the document in live table if available. if not, the last deleted document
+        if deleted is True:
+            we ignore the live table and the graph and return the last deleted document
+        if deleted is a date:
+            We look at documents deleted AFTER deleted date. 
+            if there are such documents:
+                we return the earliest of those, assuming it was alive at deleted
+            if there are no such documents, we return the document in live table if available
+
     **kwargs : keywords
         key words for grabbing the cell.
 
     :Returns:
     -------
-    The document
+    The document data
 
     :Example:
     ---------
