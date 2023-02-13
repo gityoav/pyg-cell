@@ -266,7 +266,8 @@ class db_cell(cell):
     
     @property
     def _function(self):
-        if not_partial(self.get(_db)):
+        db = self.get(_db)
+        if not_partial(db):
             function = self.function if isinstance(self.function, cell_func) else cell_func(self.function)
         else:
             keywords = self.db.keywords
@@ -294,12 +295,9 @@ class db_cell(cell):
     @property
     def _pk(self):
         db = self.get(_db)
-        if db is None:
+        if not_partial(db):
             return super(db_cell, self)._pk
-        elif is_strs(db):
-            return as_list(db)
-        else:
-            return self.db.keywords.get(_pk)        
+        return self.db.keywords.get(_pk)        
 
     @property
     def _address(self):

@@ -35,7 +35,7 @@ def test_db_cell_save():
     d = db()    
 
     d.reset.drop()
-    self = db_cell(pd.Series, data  = dict(a=1,b=2), output = 'a', db = db, key = 'a')
+    self = db_cell(as_series, df = dict(a=1,b=2), output = 'a', db = db, key = 'a')
     self = self.go()
     
     res = d.inc(key = 'a')[0] - _pk
@@ -82,6 +82,7 @@ def test_db_cell_save_root():
     GRAPH = {} # not from cache please
     res = db_cell(db = db, key = 'b').load() - _pk
     assert eq(res.data, self.data)    
+
 
 def test_db_save():
     db = partial(mongo_table, db = 'temp', table = 'temp', pk = 'key')    
@@ -135,6 +136,7 @@ def test_db_cell_clear():
     assert db_cell(5) == db_cell(5, db = None)
     assert a._address == (('url', 'localhost:27017'), ('db', 'temp'), ('table', 'temp'), ('key', 'a'))
     assert db_cell(lambda a, b: a+b, a = 1, b = 2, key = 'a', pk = 'key')._address == (('key', 'a'),)
+
 
 
 def test_db_cell_clear_mix():
@@ -197,9 +199,6 @@ def test_db_load():
     assert db_cell(db = db, key = 'wrong').load(-1) == db_cell(db = db, key = 'wrong')
 
     assert db_cell(db = db, key = 'b').load(1).data == 3
-    with pytest.raises(ValueError):
-        db_cell(db = db, key = 'wrong').load(1)
-
     assert db_cell(5).load() == db_cell(5)
     assert db_load(db_cell(5), 0) == db_cell(5)
 
@@ -213,8 +212,7 @@ def test_db_cell_cache_on_cell_func():
     b = b()
     c = c()
     assert c.data == b.data
-    b = db_cell(lambda x: x, data = a)
-    
+        
 
 def add1(x):
     return x+1
@@ -226,7 +224,7 @@ def test_db_cell_bare():
     assert cell_clear(c) == c
     c = db_cell(lambda x: x+1, x = 1)
     assert c().data == 2
-    assert c()._clear() - updated  == c
+    assert c()._clear() - updated - 'latest'  == c
     c = db_cell(data = 1)    
     d = db_cell(lambda x: x+1, x = c, db = db, key = 'key')
     d = d()
@@ -263,7 +261,19 @@ def test_db_cell_network():
     assert eq((loaded -'data').go().data, f.data)
     db().reset.drop()
     
-    
+
+
+def test_db_load_of_cells_does_not_invalidate_update():
+    c = db_cell(add_, a = 1, b = 2, db = ['x', 'y'], x = 'x', y = 'y').go()
+    assert 'updated' in c
+    c2 = get_cell(x = 'x', y = 'y')
+    assert 'updated' in c2
+    assert not c2.run()    
+    c3 = db_cell(add_, a = 1, b = 2, db = ['x', 'y'], x = 'x', y = 'y').load()
+    assert 'updated' in c3
+    assert not c3.run()    
+
+
 def test_db_cell_point_in_time():
     db = partial(mongo_table, db = 'test', table = 'test', pk = ['key'])
     db().reset.drop()

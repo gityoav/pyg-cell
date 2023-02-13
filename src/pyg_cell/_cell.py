@@ -13,6 +13,7 @@ _latest = 'latest'
 _function = 'function'
 _bind = 'bind'
 _pk = 'pk'
+_db = 'db'
 _id = '_id'
 
 
@@ -536,6 +537,13 @@ class cell(dictattr):
 
         """
         return self
+
+
+    @property
+    def _pk(self):
+        return ulist(sorted(as_list(self.get(_pk, self.get(_db)))))
+            
+
         
     def load(self, mode = 0):
         """
@@ -554,13 +562,8 @@ class cell(dictattr):
             self, updated with values from database.
         """
         address = self._address
-        if address is None:
+        if not address:
             return self
-        pk = ulist(sorted(as_list(self.get(_pk))))
-        missing = pk - self.keys()
-        if len(missing):
-            self._logger.warning('WARN: document not loaded as some keys are missing %s'%missing)
-            return self     
         GRAPH = get_cache('GRAPH')
         if mode == -1:
             if address in GRAPH:
@@ -684,9 +687,6 @@ class cell(dictattr):
         """
         return cell_output(self)
     
-    @property
-    def _pk(self):
-        return self.get(_pk)        
 
     @property
     def _address(self):
@@ -703,12 +703,14 @@ class cell(dictattr):
             returns a tuple representing the unique address of the cell.
         """
         pk = self._pk
-        if pk is None:
+        if not pk:
             return None
-        elif is_strs(pk):
-            return tuple([(key, self.get(key)) for key in sorted(as_list(pk))])
-        else:
-            raise ValueError('no primary keys provided in %s to determine address'%_pk)
+        missing = [k for k in pk if k not in self]
+        if len(missing):
+            self._logger.warning(f'missing these keys:{missing} from the primary keys {pk}')
+            return None        
+        return tuple([(key, self[key]) for key in pk])
+
 
     def _clear(self):
         res = self if self.function is None else self - self._output
@@ -749,14 +751,17 @@ class cell(dictattr):
             self._logger.info(msg)
             args = spec.args
             kwonlyargs = spec.kwonlyargs
+            kwonlydefaults = spec.kwonlydefaults or {}
             defaults = [] if spec.defaults is None else spec.defaults
             varargs = [] if spec.varargs is None or spec.varargs not in self else as_list(self[spec.varargs])
             varkw = {} if spec is None or spec.varkw is None or spec.varkw not in self else self[spec.varkw]
             if not isinstance(varkw, dict):
                 raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
+            if len(args) and args[0] == 'self':
+                self._logger.warning('cell is not designed to work with methods or objects which take "self" as first argument')
             required_args = [self[arg] for arg in args[:len(args)-len(defaults)]] 
             defaulted_args = [self.get(arg, default) for arg, default in zip(args[len(args)-len(defaults):], defaults)]
-            kwargs = {arg : self[arg] for arg in kwonlyargs}
+            kwargs = {arg : self.get(arg, kwonlydefaults[arg]) if arg in kwonlydefaults else self[arg] for arg in kwonlyargs}
             kwargs.update(varkw)
             function = self._function
             mode = 0 if mode == -1 else mode
@@ -774,11 +779,12 @@ class cell(dictattr):
             tss = list_instances(res, is_ts)
             latests = [ts.index[-1] for ts in tss if len(ts)>0]
             c[_latest] = max(latests, default = None)
+            c[_updated] = now = datetime.datetime.now()
             if address:
                 address = self._address
                 GRAPH = get_cache('GRAPH')
                 UPDATED = get_cache('UPDATED')
-                UPDATED[address] = datetime.datetime.now()
+                UPDATED[address] = now
                 GRAPH[address] = c.copy()
             return c
         else:
