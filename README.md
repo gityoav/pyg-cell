@@ -4,16 +4,21 @@ pip install from https://pypi.org/project/pyg-cell/. The project will conda-buil
 
 ## Introduction
 pyg-cell is a light-weight framework for constructing calculation graphs in Python. 
-There are a few open-source similar frameworks: Luigi (https://github.com/spotify/luigi), MDF (https://github.com/man-group/mdf)
-and various financial variations such as JP Morgan Athena (https://www.youtube.com/watch?v=3ygPF-Qshkc) BAML's Quartz and Goldman's SecDB, the daddy of all calculation graphs. A version of these is available commercially by Beacon (https://www.beacon.io/)
+There are a few open-source data/etl pipelines frameworks: Luigi (https://github.com/spotify/luigi) and Airflow (https://airflow.apache.org/).
+There are also various financial data models such as JP Morgan Athena (https://www.youtube.com/watch?v=3ygPF-Qshkc) BAML's Quartz and Goldman's SecDB, the daddy of all calculation graphs. A version of these is available commercially by Beacon (https://www.beacon.io/).
+In the open source community there is the excellent Tributary (https://pypi.org/project/tributary/), the streaming Streamz (https://streamz.readthedocs.io/en/latest/#) or the off-beat MDF (https://github.com/man-group/mdf), 
+These are broadly designed for creating an in-memory streaming graph.
 
-If you have used Luigi, mdf or indeed any of the above, you will quickly see that pyg-cell is just much easier to use.
+pyg-cell is again a data model creation library but has a few features that make it more useful if you are building an industry-grade application: 
 
-* incredibly flexible and yet entirely boiler-plate free. 
+* incredibly flexible and yet entirely boiler-plate free. No special operators, function registration or indeed any overheads. 
+* Using pyg-sql and pyg-mongo to implement a flexible and powerfull a full-audit persistency to both SQL, MongoDB and parquet/npy/pickle files.
 * supports functions that returns multiple values
-* supports self-referencing in graphs: a cell that takes its output(s) as an input
-* easy to persist, modify, extend, save in sql, mongo, parquet/npy/pickle files
+* supports self-referencing in graphs: a node that takes its own output(s) as input(s)
 * easy to control scheduling logic
+
+If you have used any of the data models libraries above, you will quickly see that pyg-cell is just much easier to use.
+
 
 ### Example: The cell
 
@@ -32,7 +37,7 @@ Here is a simple function:
 
     >>> def sum_a_list(values):
     >>>     return sum(values, 0)
-
+    
     >>> c = f(a = 1, b = 2)
     >>> d = f(a = c, b = c)
     >>> e = f(a = c, b = d)
@@ -48,7 +53,6 @@ The cell version looks like this:
     >>> d = cell(f, a = c, b = c)()
     >>> e = cell(f, a = c, b = d)()
     >>> cde = cell(sum_a_list, values = [c,d,e])()
-
     >>> assert e.data == 9
     >>> assert cde.data == 18
 
@@ -72,6 +76,20 @@ The cell version looks like this:
     
 Note that we didn't need to declare, not wrap nor modify f to take a cell as an input. sum_a_list also works out-of-the-box, happy to take a list of cells as an input. 
 This is all done behind the scene to keep the API simple: in many frameworks, you need to reformulate the function for a specific shape of inputs to be able to include it in the graph.
+
+The cell also support args and kwargs in the function definition so for example:
+
+```
+    >>> def sum_params(*params):
+    >>>     return sum(params, 0)
+    >>> assert cell(sum_params, params = [c,d,e])().data == 18
+
+    >>> def sum_of_keywords(**keywords):
+    >>>     return sum(keywords.values())
+    >>> assert cell(sum_of_keywords, keywords = dict(c=3,d=d,e=e))().data == 18
+
+```
+
     
 ### Example: The in-memory graph
 
