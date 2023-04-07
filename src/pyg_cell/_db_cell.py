@@ -35,6 +35,7 @@ _function = 'function'
 _doc = 'doc'
 _writer = 'writer'
 
+
 __all__ = ['db_load', 'db_save', 'db_cell', 'cell_push', 'cell_pull', 'get_cell', 'load_cell', 'get_data', 'load_data']
 
 
@@ -57,6 +58,7 @@ def is_pairs(pairs):
     """
     return isinstance(pairs, tuple) and min([isinstance(item, tuple) and len(item) == 2 for item in pairs], default= False)
 
+    
 
 class db_cell_func(cell_func):
     """
@@ -195,7 +197,7 @@ def _is_primitive(value):
     elif isinstance(value, dict):
         return min([_is_primitive(v) for v in value.values()], default = True)
     else:
-        return value is None or isinstance(value, (type, bool, str, int, float, datetime.datetime, datetime.date, partial))
+        return value is None or isinstance(value, (type, bool, str, int, float, datetime.datetime, datetime.date, partial, cell))
 
 class db_cell(cell):
     """
@@ -263,7 +265,8 @@ class db_cell(cell):
             super(db_cell, self).__init__(function = function, output = output, **kwargs)
 
     _func = db_cell_func
-    
+    _shared_resources = ['engine', 'session', 'connection']
+
     @property
     def _function(self):
         db = self.get(_db)
@@ -297,7 +300,27 @@ class db_cell(cell):
         db = self.get(_db)
         if not_partial(db):
             return super(db_cell, self)._pk
-        return self.db.keywords.get(_pk)        
+        return self.db.keywords.get(_pk)
+    
+    def _db(self, **kwargs):
+        """
+        equivalent to self.db() but allows the user to 
+        1) pass into partial function cells 
+        2) pass pointers to complicated elements within the cell
+    
+        """
+        value = cell_item(self.get(_db))
+        if is_partial(value):
+            keywords = {k: self.get(v, v) if is_str(v) and k in self._shared_resources and not is_str(self.get(v, v)) else v for k, v in value.keywords.items()}
+            keywords = {k: cell_item(v()) if isinstance(v, cell) else v for k, v in keywords.items()}
+            args = value.args
+            func = value.func
+            func = cell_item(func()) if isinstance(func, cell) else func
+            keywords.update(kwargs)
+            return func(*args, **keywords)
+        else:
+            return self.db
+            
 
     @property
     def _address(self):
@@ -338,7 +361,8 @@ class db_cell(cell):
         if not_partial(self.get(_db)): 
             return super(db_cell, self)._clear()
         else:
-            return self[[_db, _function, _updated] + self.db()._pk] if _updated in self else self[[_db, _function] + self.db()._pk]
+            pk = self._db()._pk
+            return self[[_db, _function, _updated] + pk] if _updated in self else self[[_db, _function] + pk]
 
     def save(self):
         db = self.get(_db)
@@ -346,7 +370,7 @@ class db_cell(cell):
             return super(db_cell, self).save()
         address = self._address
         doc = (self - _deleted)
-        db = db()
+        db = self._db()
         missing = ulist(db._pk) - self.keys()
         if len(missing):
             self._logger.warning('WARN: document not saved as some keys are missing %s'%missing)
@@ -425,7 +449,7 @@ class db_cell(cell):
         #         return res.load(mode[-1])
         #     else:
         #         raise ValueError('mode can only be of the form [], [mode] or [-1, mode]')
-        db = self.db(mode = 'w')
+        db = self._db(mode = 'w')
         pk = ulist(db._pk)
         missing = pk - self.keys()
         if len(missing):
