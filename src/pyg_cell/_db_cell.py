@@ -255,10 +255,10 @@ class db_cell(cell):
 
     def __init__(self, function = None, output = None, db = None, **kwargs):
         if db is not None:
-            # if is_partial(db):
-            #     non_primitives = {key : value for key, value in db.keywords.items() if not _is_primitive(value)}
-            #     if len(non_primitives):
-            #         raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
+            if is_partial(db):
+                non_primitives = {key : value for key, value in db.keywords.items() if not _is_primitive(value)}
+                if len(non_primitives):
+                    raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
             super(db_cell, self).__init__(function = function, output = output, db = db, **kwargs)
         else:
             self[_db] = None
@@ -606,6 +606,24 @@ class db_cell(cell):
             res = res(**bind)
             res[_db] = db
             return self + res
+        
+class calculating_cell(db_cell):
+    """
+    This is a cell that when saved in the database, is calculated without its output.
+    """
+    def save(self):
+        output_keys = self._output
+        output = cell_item(self)
+        doc = db_cell(self - output_keys)
+        res = type(self)(doc.save())
+        if isinstance(output, dict) and len(output_keys>1):
+            res.update(output)
+        else:
+            res[output_keys[0]] = output
+        address = res._address
+        get_GRAPH()[address] = res
+        return res
+        
 
 
 def cell_push(nodes = None, exc = None, go = 1):
@@ -1004,4 +1022,6 @@ def load_data(table = None, db = None, url = None, schema = None, server = None,
         
     """    
     return cell_item(load_cell(table, db = db, url = url, schema = schema, server = server, deleted = deleted, doc = doc, **kwargs), key = 'data')
+
+
 
