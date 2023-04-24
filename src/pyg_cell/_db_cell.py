@@ -609,17 +609,14 @@ class db_cell(cell):
         
 class calculating_cell(db_cell):
     """
-    This is a cell that when saved in the database, is calculated without its output.
+    This is a cell that when saved in the database, its calculated values are not saved.
     """
     def save(self):
         output_keys = self._output
-        output = cell_item(self)
-        doc = db_cell(self - output_keys)
-        res = type(self)(doc.save())
-        if isinstance(output, dict) and len(output_keys>1):
-            res.update(output)
-        else:
-            res[output_keys[0]] = output
+        output = {key : self[key] for key in output_keys if key in self}
+        pre_save = db_cell(self - output_keys)
+        res = type(self)(pre_save.save())
+        res.update(output)
         address = res._address
         get_GRAPH()[address] = res
         return res
