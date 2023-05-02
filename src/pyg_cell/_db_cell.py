@@ -445,10 +445,9 @@ class db_cell(cell):
         
         Example:Merge of cached cell and calling cell:
         ----------------------------------------
-        Once we load from memory (either MongoDB or GRAPH), we tree_update the cached cell with the new values in the current cell.
-        This means that it is next to impossible to actually *delete* keys. If you want to delete keys in a cell/cells in the database, you need to:
-        
-        >>> del db.inc(filters)['key.subkey']
+        Once we load from memory (either MongoDB or GRAPH), we update the cached cell with the output values in the current cell.
+        You can choose to load the cell and import it in its entirety if you set load(mode = 'load and import')
+    
 
         :Parameters:
         ----------
@@ -501,17 +500,22 @@ class db_cell(cell):
             saved = graph[address] 
             self_updated = self.get(_updated)
             saved_updated = saved.get(_updated)
-            if self_updated is None or (saved_updated is not None and saved_updated > self_updated):
-                excluded_keys = (self /  None).keys() - self._output - _updated
+            if mode == 'load and update' or self.function is None:
+                if self_updated is None or (saved_updated is not None and saved_updated > self_updated):
+                    excluded_keys = (self /  None).keys() - self._output - _updated
+                else:
+                    excluded_keys = (self /  None).keys()
+                if is_date(mode):
+                    excluded_keys += [_id]
+                update = (saved / None) - excluded_keys
             else:
-                excluded_keys = (self /  None).keys()
-            if is_strs(mode):
-                excluded_keys += as_list(mode)
-            elif is_date(mode):
-                excluded_keys += [_id]
-            update = (saved / None) - excluded_keys
+                if self_updated is None or (saved_updated is not None and saved_updated > self_updated):
+                    update = {key : saved[key] for key in saved._output + [_updated] if key in saved and saved[key] is not None}
+                else:
+                    update = {}
             updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and not isinstance(v, cell) and not eq(saved[k], v)]
-            self.update(update)
+            if update:
+                self.update(update)
             if len(updated_inputs):
                 self[_updated] = None
         return self        
