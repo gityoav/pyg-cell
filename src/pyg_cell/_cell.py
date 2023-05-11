@@ -1,5 +1,5 @@
 from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_getitem, getargspec, getargs, getcallargs, \
-                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable
+                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable, dictattr
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
 
@@ -495,6 +495,10 @@ class cell(dictattr):
         if _function not in kwargs:
             kwargs[_function] = None
         super(cell, self).__init__(**kwargs)
+        outputs = self._output
+        overlapping = {key : value for key, value in self._inputs.items() if isinstance(value, cell) and key in outputs}
+        if len(overlapping):
+            raise ValueError(f'cannot have a cell as an input and at the same time an output: {overlapping}, as it will be over-written on calculation, breaking graph structure')
         self.pull()
 
 
