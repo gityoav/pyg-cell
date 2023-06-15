@@ -102,6 +102,7 @@ def cell_outputs(value):
     return _cell_outputs(value)
     
 
+
 def cell_clear(value):
     """
     cell_clear clears a cell of its output so that it contains only the essentil stuff to do its calculations.
@@ -139,6 +140,22 @@ def cell_clear(value):
                 return type(value)(**{str(k): cell_clear(v) for k, v in value.items()})
             else:
                 return type(value)({k: cell_clear(v) for k, v in value.items()})
+    else:
+        return value
+
+def cell_repr(value):
+    if isinstance(value, cell):
+        return value._repr()
+    elif isinstance(value, (tuple, list)):
+        return type(value)([cell_repr(v) for v in value])
+    elif isinstance(value, dict):
+        try:
+            return type(value)(**{k : cell_repr(v) for k, v in value.items()})
+        except TypeError:
+            if isinstance(value, dictable):
+                return type(value)(**{str(k): cell_repr(v) for k, v in value.items()})
+            else:
+                return type(value)({k: cell_repr(v) for k, v in value.items()})
     else:
         return value
 
@@ -905,8 +922,14 @@ class cell(dictattr):
     def copy(self):
         return copy(self)
 
+    
+    def _repr(self):
+        pk = self._pk 
+        return tree_repr(type(self)({k:self.get(k) for k in pk + ['db', 'function'] + self._output}))
+
+
     def __repr__(self):
-        return '%s\n%s'%(self.__class__.__name__,tree_repr({k : cell_clear(v) for k, v in self.items()}))
+        return '%s\n%s'%(self.__class__.__name__,tree_repr({k : cell_repr(v) for k, v in self.items()}))
 
     def pull(self):
         """
