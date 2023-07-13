@@ -583,8 +583,7 @@ class cell(dictattr):
         """
         res = self.get(_pk, self.get(_db))
         if isinstance(res, str) and '%' in res:
-            res = res.replace('\\', '/')
-            keys = [key[1:].split('.')[0] for key in res.split('/') if key.startswith('%')]
+            keys = [key.split('.')[0].split('/')[0].split('\\')[0] for key in res.split('%')[1:]]
         else:
             keys = as_list(res)
         return ulist(sorted(as_list(keys)))
@@ -593,8 +592,6 @@ class cell(dictattr):
         db = self.get(_db)
         if isinstance(db, str) and '%' in db:
             return db
-        elif isinstance(db, partial) and 'writer' in db.keywords:
-            return db.keywords['writer']
         return None
 
         
