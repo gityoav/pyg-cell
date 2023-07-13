@@ -2,9 +2,10 @@ from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_geti
                     eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable, dictattr
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
-
+from pyg_encoders import as_writer
 from copy import copy
 import datetime
+from functools import partial
 
 _data = 'data'
 _output = 'output'
@@ -56,7 +57,7 @@ def _cell_item(value, key = None, key_before_data = False):
             return value
     output = cell_output(value)
     if len(output) == 1:
-        if key is None:
+        if key is None: 
             return value[output[0]]
         else:
             if key_before_data:
@@ -547,6 +548,7 @@ class cell(dictattr):
                     return True
         return False
     
+
     def save(self):
         """
         Saves the cell for persistency. For an in-memory cell, this is implemented by storing cell._address in the GRAPH
@@ -555,15 +557,45 @@ class cell(dictattr):
         -------
         cell
             self, saved.
+            
+            
+        Example:
+        -------
+        >>> from pyg import * 
+        >>> a = pd.Series([1,2,3], drange(2))
+        >>> b = 3
+        >>> c = cell(add_, a = a, b = b, name = 'james', surname = 'cohen', db = 'c:/test/%name/%surname.pickle')()
 
         """
+        writer = self._writer()
+        if writer is not None:
+            w = as_writer(writer)[0]
+            keys = self._pk + self._output
+            doc = self[keys]
+            _ = w(doc)        
         return self
 
 
     @property
     def _pk(self):
-        return ulist(sorted(as_list(self.get(_pk, self.get(_db)))))
-            
+        """
+        res = 'c:/%a/%b.parquet'
+        """
+        res = self.get(_pk, self.get(_db))
+        if isinstance(res, str) and '%' in res:
+            res = res.replace('\\', '/')
+            keys = [key[1:].split('.')[0] for key in res.split('/') if key.startswith('%')]
+        else:
+            keys = as_list(res)
+        return ulist(sorted(as_list(keys)))
+    
+    def _writer(self):
+        db = self.get(_db)
+        if isinstance(db, str) and '%' in db:
+            return db
+        elif isinstance(db, partial) and 'writer' in db.keywords:
+            return db.keywords['writer']
+        return None
 
         
     def load(self, mode = 0):
