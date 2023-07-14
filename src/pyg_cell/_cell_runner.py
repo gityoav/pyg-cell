@@ -66,7 +66,10 @@ class cell_runner(wrapper):
             args_.update(args)
         else:
             raise ValueError(f'not sure what args are {args}')
-        if isinstance(db, (str,list)):
+        if isinstance(db, str) and '%' in db:
+            db_ = [key.split('.')[0].split('/')[0].split('\\')[0] for key in db.split('%')[1:]]
+            args_.update(dict(zip(db_, db_)))
+        elif isinstance(db, (str,list)):
             db_ = [v for v in as_list(db) if v not in args_.values()]
             args_.update(dict(zip(db_, db_)))
         elif isinstance(db, partial):
@@ -85,7 +88,7 @@ class cell_runner(wrapper):
             res = kws.apply(self.function)
         if isinstance(res, cell):
             res.update(kws - res.keys())
-            if self.db and isinstance(res, db_cell) and res.db is None:
+            if self.db and res.get('db') is None:
                 res.db = self.db
             res = res(self.go, self.load)
         return res
