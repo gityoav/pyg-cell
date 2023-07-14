@@ -2,7 +2,7 @@ from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_geti
                     eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable, dictattr
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
-from pyg_encoders import as_writer
+from pyg_encoders import as_writer, npy_write
 from copy import copy
 import datetime
 from functools import partial
@@ -570,9 +570,10 @@ class cell(dictattr):
         writer = self._writer()
         if writer is not None:
             w = as_writer(writer)[0]
-            keys = self._pk + self._output
-            doc = self[keys]
-            _ = w(doc)        
+            doc = {k: self[k] for k in self._output if k in self}
+            if len(doc)>0:
+                doc.update(dictattr(self)[self._pk])
+                _ = w(doc)        
         return self
 
 
