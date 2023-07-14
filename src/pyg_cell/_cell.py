@@ -572,8 +572,13 @@ class cell(dictattr):
             w = as_writer(writer)[0]
             doc = {k: self[k] for k in self._output if k in self}
             if len(doc)>0:
-                doc.update(dictattr(self)[self._pk])
-                _ = w(doc)        
+                pk = self._pk
+                keys = {k : self[k] for k in pk if k in self}
+                if len(keys) < len(pk):
+                    logger.info(f'cannot save cell as need {pk} but only have {keys}')
+                else:
+                    doc.update(keys)
+                    _ = w(doc)        
         return self
 
 
