@@ -1,4 +1,4 @@
-from pyg_base import dt, eq, is_date, ulist, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
+from pyg_base import loop, dt, eq, is_date, ulist, is_str, is_strs, as_list, get_cache, Dict, dictable, list_instances
 from pyg_encoders import cell_root, root_path, pd_read_parquet, pickle_load, pd_read_csv, dictable_decode
 from pyg_npy import pd_read_npy
 from pyg_cell._types import _get_mode, _get_qq, DBS, QQ, CLSS
@@ -14,6 +14,15 @@ def is_partial(db):
 
 def not_partial(db):
     return not isinstance(db, partial)
+
+@loop(list, tuple, dict)
+def impartial(v):
+    if isinstance(v, partial):
+        args, keywords = impartial((v.args, v.keywords))
+        return v.func(*args, **keywords)
+    else:
+        return v
+       
 
 _readers = dict(parquet = pd_read_parquet, 
                 pickle = pickle_load, 
@@ -306,8 +315,8 @@ class db_cell(cell):
     def _keywords(self, keywords):
         keywords = {k: self.get(v, v) if is_str(v) and k in self._shared_resources and not is_str(self.get(v, v)) else v for k, v in keywords.items()}
         keywords = {k: cell_item(v()) if isinstance(v, cell) else v for k, v in keywords.items()}
-        keywords = {k: v() if isinstance(v, partial) else v for k, v in keywords.items()}
-        return keywords        
+        keywords = impartial(keywords)
+        return keywords   
     
     def _db(self, **kwargs):
         """
@@ -317,8 +326,9 @@ class db_cell(cell):
     
         Example: suppport for partials inside the db parameter:
         --------
+        >>> from pyg import * 
         >>> self = db_cell(add_, a = 1, b = 2, db = partial(sql_table, server = 'DESKTOP-LU5C5QF', db = partial(lambda db: db, db = 'test2'), 
-                                                            table = 'test3', 
+                                                            table = 'test7', 
                                                             schema = 'cta', pk = 'key', create = True, doc = True), key = 'test')()
 
     
