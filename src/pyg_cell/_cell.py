@@ -815,7 +815,9 @@ class cell(dictattr):
                 raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
             if len(args) and args[0] == 'self':
                 self._logger.warning('cell is not designed to work with methods or objects which take "self" as first argument')
-            required_args = [self[arg] for arg in args[:len(args)-len(defaults)]] 
+                required_args = [self[arg] for arg in args[1: len(args)-len(defaults)]]
+            else:
+                required_args = [self[arg] for arg in args[: len(args)-len(defaults)]]                
             defaulted_args = [self.get(arg, default) for arg, default in zip(args[len(args)-len(defaults):], defaults)]
             kwargs = {arg : self.get(arg, kwonlydefaults[arg]) if arg in kwonlydefaults else self[arg] for arg in kwonlyargs}
             kwargs.update(varkw)
