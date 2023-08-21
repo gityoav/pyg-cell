@@ -265,8 +265,7 @@ class db_cell(cell):
     def __init__(self, function = None, output = None, db = None, **kwargs):
         if db is not None:
             if is_partial(db):
-                keywords = self._keywords(db.keywords)
-                non_primitives = {key : value for key, value in keywords.items() if not _is_primitive(value)}
+                non_primitives = {key : value for key, value in db.keywords.items() if not _is_primitive(value)}
                 if len(non_primitives):
                     raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
             super(db_cell, self).__init__(function = function, output = output, db = db, **kwargs)
