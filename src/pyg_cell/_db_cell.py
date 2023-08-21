@@ -256,7 +256,8 @@ class db_cell(cell):
     def __init__(self, function = None, output = None, db = None, **kwargs):
         if db is not None:
             if is_partial(db):
-                non_primitives = {key : value for key, value in db.keywords.items() if not _is_primitive(value)}
+                keywords = self._keywords(db.keywords)
+                non_primitives = {key : value for key, value in keywords.items() if not _is_primitive(value)}
                 if len(non_primitives):
                     raise ValueError('partial construction of cell must be from primitive paramters. but these are not: %s'%non_primitives)
             super(db_cell, self).__init__(function = function, output = output, db = db, **kwargs)
@@ -273,7 +274,7 @@ class db_cell(cell):
         if not_partial(db):
             function = self.function if isinstance(self.function, cell_func) else cell_func(self.function)
         else:
-            keywords = self.db.keywords
+            keywords = self._keywords(self.db.keywords)
             env = {}
             for k in ['server', 'url']:
                 if k in keywords:
@@ -302,17 +303,29 @@ class db_cell(cell):
             return super(db_cell, self)._pk
         return self.db.keywords.get(_pk)
     
+    def _keywords(self, keywords):
+        keywords = {k: self.get(v, v) if is_str(v) and k in self._shared_resources and not is_str(self.get(v, v)) else v for k, v in keywords.items()}
+        keywords = {k: cell_item(v()) if isinstance(v, cell) else v for k, v in keywords.items()}
+        keywords = {k: v() if isinstance(v, partial) else v for k, v in keywords.items()}
+        return keywords        
+    
     def _db(self, **kwargs):
         """
         equivalent to self.db() but allows the user to 
         1) pass into partial function cells 
         2) pass pointers to complicated elements within the cell
     
+        Example: suppport for partials inside the db parameter:
+        --------
+        >>> self = db_cell(add_, a = 1, b = 2, db = partial(sql_table, server = 'DESKTOP-LU5C5QF', db = partial(lambda db: db, db = 'test2'), 
+                                                            table = 'test3', 
+                                                            schema = 'cta', pk = 'key', create = True, doc = True), key = 'test')()
+
+    
         """
         value = cell_item(self.get(_db))
         if is_partial(value):
-            keywords = {k: self.get(v, v) if is_str(v) and k in self._shared_resources and not is_str(self.get(v, v)) else v for k, v in value.keywords.items()}
-            keywords = {k: cell_item(v()) if isinstance(v, cell) else v for k, v in keywords.items()}
+            keywords = self._keywords(value.keywords)
             args = value.args
             func = value.func
             func = cell_item(func()) if isinstance(func, cell) else func
@@ -328,8 +341,8 @@ class db_cell(cell):
         :Example:
         ----------
         >>> from pyg import *
-        >>> self = db_cell(db = partial(mongo_table, 'test', 'test', pk = 'key'), key = 1)
-        >>> db = self.db()
+        >>> self = db_cell(db = partial(sql_table, server = 'DESKTOP-LU5C5QF', db = 'test', table = 'test', schema = 'cta', pk = 'key', create = True), key = 1)
+        >>> self._db()
         >>> self._address
         >>> self._reference()
         >>> self.get('key')
@@ -620,7 +633,7 @@ class db_cell(cell):
         if db is None:
             return super(db_cell, self).bind(**bind)
         else:
-            kw = self.db.keywords
+            kw = self._keywords(self.db.keywords)
             for k in bind: # we want to be able to override tables/db/url
                 if k in ['db', 'table', 'url']:
                     kw[k] = bind.pop(k)
