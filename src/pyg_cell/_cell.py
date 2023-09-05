@@ -2,7 +2,7 @@ from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_geti
                     eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable, dictattr
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
-from pyg_encoders import as_writer, npy_write
+from pyg_encoders import as_writer, npy_write, pd_read_root
 from copy import copy
 import datetime
 from functools import partial
@@ -625,7 +625,7 @@ class cell(dictattr):
             if address in GRAPH:
                 del GRAPH[address]
             return self
-        if address is not None and address in GRAPH:
+        if address in GRAPH:
             saved = GRAPH[address] 
             self_updated = self.get(_updated)
             saved_updated = saved.get(_updated)
@@ -642,6 +642,11 @@ class cell(dictattr):
             self.update(update)
             if len(updated_inputs):
                 self[_updated] = None
+        db = self.get(_db)
+        if isinstance(db, str) and '%' in db:
+            on_file = pd_read_root(db, self, self._output)
+            if len(on_file):
+                self.update(on_file)
         return self
             
     def __call__(self, go = 0, mode = 0, **kwargs):
@@ -815,7 +820,9 @@ class cell(dictattr):
                 raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
             if len(args) and args[0] == 'self':
                 self._logger.warning('cell is not designed to work with methods or objects which take "self" as first argument')
-            required_args = [self[arg] for arg in args[:len(args)-len(defaults)]] 
+                required_args = [self[arg] for arg in args[1: len(args)-len(defaults)]]
+            else:
+                required_args = [self[arg] for arg in args[: len(args)-len(defaults)]]                
             defaulted_args = [self.get(arg, default) for arg, default in zip(args[len(args)-len(defaults):], defaults)]
             kwargs = {arg : self.get(arg, kwonlydefaults[arg]) if arg in kwonlydefaults else self[arg] for arg in kwonlyargs}
             kwargs.update(varkw)
