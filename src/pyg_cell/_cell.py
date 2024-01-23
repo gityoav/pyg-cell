@@ -829,7 +829,7 @@ class cell(dictattr):
             function = self._function
             mode = 0 if mode == -1 else mode
             res, called_args, called_kwargs = function(*required_args, *defaulted_args, *varargs, go = go-1 if is_num(go) and go>0 else go, mode = mode, **kwargs)
-            c = self + called_kwargs
+            c = self.copy()
             output = cell_output(c)
             if output is None:
                 c[_data] = res
