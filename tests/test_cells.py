@@ -7,7 +7,7 @@ _updated = 'updated'
 def test_cell():
     c = cell(lambda a:a+1)
     assert cell_output(c) == ['data']
-    with pytest.raises(TypeError):
+    with pytest.raises(KeyError):
         c.go()
     c.a = 1
     assert c.go().data == 2

@@ -1,4 +1,5 @@
-from pyg_cell._db_cell import db_cell, cell
+from pyg_cell._cell import cell, cell_item
+from pyg_cell._db_cell import db_cell
 from pyg_base import wrapper, argspec_update, ulist, as_list, Dict
 from functools import partial
 
@@ -23,6 +24,9 @@ class cell_runner(wrapper):
     
     constants: dict
         values to update the cell without adding to function signature
+        
+    as_data: bool
+        once cell is run, return its value?
     
     example:
     --------
@@ -53,7 +57,7 @@ class cell_runner(wrapper):
     >>> assert getargspec(W).defaults == (1, 'james')
     """
     
-    def __init__(self, function = None, go = 0, load = 0, db = None, args = None, defaults = None, constants = None):
+    def __init__(self, function = None, go = 0, load = 0, db = None, args = None, defaults = None, constants = None, as_data = False):
         defaults_ = defaults or {}
         args_ = {key : key for key in defaults_}
         if not args:
@@ -75,7 +79,7 @@ class cell_runner(wrapper):
         elif isinstance(db, partial):
             db_ = [v for v in as_list(db.keywords.get('pk')) if v not in args_.values()]
             args_.update(dict(zip(db_, db_)))
-        return super(cell_runner, self).__init__(function = function, go = go, load = load, db = db, args = args_, defaults = defaults_, constants = constants or {})
+        return super(cell_runner, self).__init__(function = function, go = go, load = load, db = db, args = args_, defaults = defaults_, constants = constants or {}, as_data = as_data)
 
     def wrapped(self, **kwargs):
         kws = Dict(self.constants)
@@ -91,6 +95,8 @@ class cell_runner(wrapper):
             if self.db and res.get('db') is None:
                 res.db = self.db
             res = res(self.go, self.load)
+            if self.as_data:
+                res = cell_item(res)
         return res
 
     @property

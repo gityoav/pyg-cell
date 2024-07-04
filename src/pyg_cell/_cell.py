@@ -827,7 +827,6 @@ class cell(dictattr):
             kwargs = {arg : self.get(arg, kwonlydefaults[arg]) if arg in kwonlydefaults else self[arg] for arg in kwonlyargs}
             kwargs.update(varkw)
             function = self._function
-            mode = 0 if mode == -1 else mode
             res, called_args, called_kwargs = function(*required_args, *defaulted_args, *varargs, go = go-1 if is_num(go) and go>0 else go, mode = mode, **kwargs)
             c = self.copy()
             output = cell_output(c)
@@ -845,13 +844,14 @@ class cell(dictattr):
             c[_updated] = now = datetime.datetime.now()
             if address:
                 address = self._address
-                GRAPH = get_cache('GRAPH')
                 UPDATED = get_cache('UPDATED')
                 UPDATED[address] = now
-                GRAPH[address] = c.copy()
+                if mode>=0:
+                    GRAPH = get_cache('GRAPH')
+                    GRAPH[address] = c.copy()
             return c
         else:
-            if address:
+            if address and mode>=0:
                 GRAPH = get_cache('GRAPH')
                 GRAPH[address] = self.copy()
             return self
@@ -956,7 +956,7 @@ class cell(dictattr):
             return res.save()
         else:
             address = res._address
-            if address:
+            if address and mode>=0:
                 GRAPH[address] = res.copy()
             return res
         
@@ -1059,6 +1059,7 @@ class cell(dictattr):
         return self + res
 
 
+
 class updated_cell(cell):
     """ 
     An updated_cell will only update its "updated" and will only save itself, once the value in its output has changed
@@ -1096,7 +1097,7 @@ class updated_cell(cell):
             return res.save()
         else:
             address = res._address
-            if address:
+            if address and mode>=0:
                 GRAPH[address] = res.copy()
             return res
         

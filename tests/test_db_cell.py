@@ -120,7 +120,7 @@ def test_db_cell_clear():
     d = db()    
     d.reset.drop()
     f = lambda a, b: a+b
-    a = db_cell(f, a = 1, b = 2, key = 'a', db = db)
+    a = db_cell(f, a = 1, b = 2, key = 'a', db = ['key'])()
     b = db_cell(f, a = 1, b = 2, key = 'b', db = db)
     c = db_cell(f, a = a, b = b, key = 'c', db = db)
     c = c()

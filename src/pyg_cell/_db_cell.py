@@ -390,7 +390,6 @@ class db_cell(cell):
         db = self.get(_db)
         if not_partial(db):
             return super(db_cell, self).save()
-        address = self._address
         doc = (self - _deleted)
         db = self._db()
         missing = ulist(db._pk) - self.keys()
@@ -403,8 +402,7 @@ class db_cell(cell):
         except Exception:
             updated = db.update_one(ref - db._ids)
         for i in db._ids:
-            doc[i] = updated.get(i)
-        get_GRAPH()[address] = doc
+            doc[i] = updated.get(i)        
         return doc
     
     def _needed(self, go):
@@ -507,7 +505,7 @@ class db_cell(cell):
                 doc = _load_asof(db, kwargs, deleted = mode)
                 graph[doc._address] = doc
             else:
-                if mode == 'if needed' and not self._needed(go):
+                if (mode == 'if needed' and not self._needed(go)) or mode<0:
                     return self
                 try:
                     doc = _load_asof(table = db, kwargs = kwargs, deleted = False, qq = None)
@@ -664,8 +662,6 @@ class calculating_cell(db_cell):
         pre_save = db_cell(self - output_keys)
         res = type(self)(pre_save.save())
         res.update(output)
-        address = res._address
-        get_GRAPH()[address] = res
         return res
         
 
