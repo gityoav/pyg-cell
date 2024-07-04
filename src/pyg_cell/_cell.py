@@ -504,7 +504,7 @@ class cell(dictattr):
     _logger = logger
     
     def __init__(self, function = None, output = None, **kwargs):
-        if (len(kwargs) == 0 and isinstance(function, (Dict, cell))) or (isinstance(function,dict) and not callable(function)): 
+        if len(kwargs) == 0 and isinstance(function, (Dict, cell)): 
             kwargs.update(function)
         else:
             kwargs[_function] = function
@@ -783,6 +783,17 @@ class cell(dictattr):
         function = self.function if isinstance(self.function, self._func) else self._func(self.function)
         return function
     
+    def _go_finally(self, address, mode):
+        self[_updated] = now = datetime.datetime.now()
+        if address:
+            address = self._address
+            UPDATED = get_cache('UPDATED')
+            UPDATED[address] = now
+            if mode>=0:
+                GRAPH = get_cache('GRAPH')
+                GRAPH[address] = self.copy()
+        return self
+    
     def _go(self, go = 0, mode = 0):
         """
 
@@ -800,61 +811,74 @@ class cell(dictattr):
 
         """
         address = self._address
-        if callable(self.function) and (go!=0 or self.run()):
-            spec = self.fullargspec
-            if spec is None: ##shouldn't happen as self.function callable
-                return self
-            if address:
-                pairs = ', '.join([("%s = '%s'" if isinstance(value, str) else "%s = dt('%s')" if is_date(value) else "%s = %s")%(key, value) for key, value in address])
-                msg = "get_cell(%s)()"%pairs
-            else:
-                msg = str(address)
-            self._logger.info(msg)
-            args = spec.args
-            kwonlyargs = spec.kwonlyargs
-            kwonlydefaults = spec.kwonlydefaults or {}
-            defaults = [] if spec.defaults is None else spec.defaults
-            varargs = [] if spec.varargs is None or spec.varargs not in self else as_list(self[spec.varargs])
-            varkw = {} if spec is None or spec.varkw is None or spec.varkw not in self else self[spec.varkw]
-            if not isinstance(varkw, dict):
-                raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
-            if len(args) and args[0] == 'self':
-                self._logger.warning('cell is not designed to work with methods or objects which take "self" as first argument')
-                required_args = [self[arg] for arg in args[1: len(args)-len(defaults)]]
-            else:
-                required_args = [self[arg] for arg in args[: len(args)-len(defaults)]]                
-            defaulted_args = [self.get(arg, default) for arg, default in zip(args[len(args)-len(defaults):], defaults)]
-            kwargs = {arg : self.get(arg, kwonlydefaults[arg]) if arg in kwonlydefaults else self[arg] for arg in kwonlyargs}
-            kwargs.update(varkw)
-            function = self._function
-            res, called_args, called_kwargs = function(*required_args, *defaulted_args, *varargs, go = go-1 if is_num(go) and go>0 else go, mode = mode, **kwargs)
-            c = self.copy()
-            output = cell_output(c)
-            if output is None:
-                c[_data] = res
-            elif len(output)>1:
-                res = {o : res[o] for o in output}
-                for o in output:
-                    c[o] = res[o]
-            else:
-                c[output[0]] = res
-            tss = list_instances(res, is_ts)
-            latests = [ts.index[-1] for ts in tss if len(ts)>0]
-            c[_latest] = max(latests, default = None)
-            c[_updated] = now = datetime.datetime.now()
-            if address:
-                address = self._address
-                UPDATED = get_cache('UPDATED')
-                UPDATED[address] = now
-                if mode>=0:
-                    GRAPH = get_cache('GRAPH')
-                    GRAPH[address] = c.copy()
-            return c
-        else:
-            if address and mode>=0:
-                GRAPH = get_cache('GRAPH')
-                GRAPH[address] = self.copy()
-            return self
+        if (go!=0 or self.run()):
+            if callable(self.function):
+                spec = self.fullargspec
+                if spec is None: ##shouldn't happen as self.function callable
+                    return self
+                if address:
+                    pairs = ', '.join([("%s = '%s'" if isinstance(value, str) else "%s = dt('%s')" if is_date(value) else "%s = %s")%(key, value) for key, value in address])
+                    msg = "get_cell(%s)()"%pairs
+                else:
+                    msg = str(address)
+                self._logger.info(msg)
+                args = spec.args
+                kwonlyargs = spec.kwonlyargs
+                kwonlydefaults = spec.kwonlydefaults or {}
+                defaults = [] if spec.defaults is None else spec.defaults
+                varargs = [] if spec.varargs is None or spec.varargs not in self else as_list(self[spec.varargs])
+                varkw = {} if spec is None or spec.varkw is None or spec.varkw not in self else self[spec.varkw]
+                if not isinstance(varkw, dict):
+                    raise ValueError('%s in the cell must be a dict as that parameter is declared by function as varkw' % spec.varkw)
+                if len(args) and args[0] == 'self':
+                    self._logger.warning('cell is not designed to work with methods or objects which take "self" as first argument')
+                    required_args = [self[arg] for arg in args[1: len(args)-len(defaults)]]
+                else:
+                    required_args = [self[arg] for arg in args[: len(args)-len(defaults)]]                
+                defaulted_args = [self.get(arg, default) for arg, default in zip(args[len(args)-len(defaults):], defaults)]
+                kwargs = {arg : self.get(arg, kwonlydefaults[arg]) if arg in kwonlydefaults else self[arg] for arg in kwonlyargs}
+                kwargs.update(varkw)
+                function = self._function
+                res, called_args, called_kwargs = function(*required_args, *defaulted_args, *varargs, go = go-1 if is_num(go) and go>0 else go, mode = mode, **kwargs)
+                c = self.copy()
+                output = cell_output(c)
+                if output is None:
+                    c[_data] = res
+                elif len(output)>1:
+                    res = {o : res[o] for o in output}
+                    for o in output:
+                        c[o] = res[o]
+                else:
+                    c[output[0]] = res
+                tss = list_instances(res, is_ts)
+                latests = [ts.index[-1] for ts in tss if len(ts)>0]
+                c[_latest] = max(latests, default = None)
+                return c._go_finally(address, mode)
+            elif isinstance(self.function, (list, dict)):
+                functions = self.function
+                res = self.copy()
+                if isinstance(functions, list):
+                    keys = [getargs(function)[0] for function in functions[1:]] + [_data]
+                    funcs = functions
+                else:
+                    keys = functions.keys()
+                    funcs = functions.values()
+                for key, function in zip(keys, funcs):
+                    res.function = function
+                    assert cell_output(res) in (None, [_data])
+                    res = res._go(1, mode)
+                    res[key] = res[_data]
+                value = res[_data]
+                for key in keys:
+                    del res[key]
+                res[_data] = value
+                res.function = functions
+                return res._go_finally(address, mode)
+
+        if address and mode>=0:
+            GRAPH = get_cache('GRAPH')
+            GRAPH[address] = self.copy()
+        return self
             
 
     @property
