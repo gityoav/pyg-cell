@@ -28,7 +28,7 @@ class cell_runner(wrapper):
     as_data: bool
         once cell is run, return its value?
     
-    example:
+    Example:
     --------
     
     >>> W = cell_runner(args = ['key'], db = ['x', 'key'])
@@ -39,6 +39,22 @@ class cell_runner(wrapper):
     >>> assert rs[lambda x2: x2.key] == ['x2'] * 4
     >>> assert rs[lambda x2: x2.x] == rs.x
 
+    Example: decorating the function of the cell
+    --------
+    We would like to decorate cells so that they work on:
+        - dict inputs
+        - raw values
+    
+    >>> from pyg import * 
+    >>> W = cell_runner(decorate = loop(dict), as_data = True)
+    >>> rs = dictable(a = [dict(x = 1, y = 2), 
+                           3, 
+                           dict(x = 3, y = 4)], 
+                      b = [5, 6, dict(x = 1, y = 2)],
+                      name = ['a is dict', 'neither dict', 'both dicts'])
+    >>> rs = rs(c = W(lambda a, b: cell(add_, a = a, b = b)))
+    >>> assert rs.c == [dict(x = 6, y = 7), 9, dict(x = 4, y = 6)]
+    
     Example: changing function signature
     --------
     >>> W = cell_runner(db = ['x', 'key'])(lambda a, b: a + b)
@@ -57,7 +73,9 @@ class cell_runner(wrapper):
     >>> assert getargspec(W).defaults == (1, 'james')
     """
     
-    def __init__(self, function = None, go = 0, load = 0, db = None, args = None, defaults = None, constants = None, as_data = False):
+    def __init__(self, function = None, go = 0, load = 0, db = None, args = None, 
+                 defaults = None, constants = None, as_data = False,
+                 decorate = None):
         defaults_ = defaults or {}
         args_ = {key : key for key in defaults_}
         if not args:
@@ -79,7 +97,12 @@ class cell_runner(wrapper):
         elif isinstance(db, partial):
             db_ = [v for v in as_list(db.keywords.get('pk')) if v not in args_.values()]
             args_.update(dict(zip(db_, db_)))
-        return super(cell_runner, self).__init__(function = function, go = go, load = load, db = db, args = args_, defaults = defaults_, constants = constants or {}, as_data = as_data)
+        return super(cell_runner, self).__init__(function = function, go = go, 
+                                                 load = load, db = db, 
+                                                 args = args_, defaults = defaults_, 
+                                                 constants = constants or {}, 
+                                                 as_data = as_data,
+                                                 decorate = decorate)
 
     def wrapped(self, **kwargs):
         kws = Dict(self.constants)
@@ -92,6 +115,8 @@ class cell_runner(wrapper):
             res = kws.apply(self.function)
         if isinstance(res, cell):
             res.update(kws - res.keys())
+            if self.decorate is not None:
+                res.function = self.decorate(res.function)
             if self.db and res.get('db') is None:
                 res.db = self.db
             res = res(self.go, self.load)
