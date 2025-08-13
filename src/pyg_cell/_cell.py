@@ -1,5 +1,5 @@
 from pyg_base import as_list, is_primitive, get_cache, dictattr, Dict, tree_getitem, getargspec, getargs, getcallargs, \
-                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable, dictattr
+                    eq, loop, ulist, tree_repr, wrapper, logger, is_strs, is_date, is_num, list_instances, is_ts, dictable, dictattr, wrapper
                     
 from pyg_cell._dag import get_DAG, get_GAD, add_edge, del_edge, topological_sort 
 from pyg_encoders import as_writer, npy_write, pd_read_root
@@ -44,6 +44,8 @@ def cell_output(c):
 @loop(list, tuple)
 def _cell_item(value, key = None, key_before_data = False):
     if not isinstance(value, cell):
+        if isinstance(value, wrapper):
+            return value
         if isinstance(value, dict):
             try:
                 return type(value)(**{k: cell_item(v, key) for k, v in value.items()})
@@ -201,7 +203,10 @@ def _cell_go(value, go, mode = 0):
         else:
             return value.go(go = go, mode = mode)
     else:
-        if isinstance(value, dict):
+        if isinstance(value, wrapper):
+            return value
+        
+        elif isinstance(value, dict):
             try:
                 return type(value)(**{k: _cell_go(v, go = go, mode = mode) for k, v in value.items()})
             except TypeError:
@@ -670,6 +675,10 @@ class cell(dictattr):
             the loaded & calculated cell.
 
         """
+        if self.function is None and callable(go):
+            res = self.copy()
+            res.update(kwargs|dict(function = go))
+            return res
         return (self + kwargs).load(mode = mode).go(go = go, mode = mode)
 
 

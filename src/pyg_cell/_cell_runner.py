@@ -1,6 +1,7 @@
 from pyg_cell._cell import cell, cell_item
 from pyg_cell._db_cell import db_cell
-from pyg_base import wrapper, argspec_update, ulist, as_list, Dict
+from pyg_base import wrapper, argspec_update, ulist, as_list, Dict, getargspec
+from pyg_base._decorators import _spec
 from functools import partial
 
 
@@ -142,14 +143,15 @@ class cell_runner(wrapper):
             DESCRIPTION.
 
         """
-        spec = super(cell_runner, self).fullargspec
-        args = self.required + spec.args
-        if self.defaults:
-            optional = {k : v for k, v in self.defaults.items() if k not in args}
-            args = args + list(optional.keys())
-            defaults = (spec.defaults or ()) + tuple(optional.values())
-            return argspec_update(spec, args = args, defaults = defaults)
-        else:
-            return argspec_update(spec, args = args)
-            
+        if self[_spec] is None:
+            spec = getargspec(self.function)
+            args = self.required + spec.args
+            if self.defaults:
+                optional = {k : v for k, v in self.defaults.items() if k not in args}
+                args = args + list(optional.keys())
+                defaults = (spec.defaults or ()) + tuple(optional.values())
+                self[_spec] = argspec_update(spec, args = args, defaults = defaults)
+            else:
+                self[_spec] = argspec_update(spec, args = args)
+        return self[_spec]
 

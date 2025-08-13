@@ -1,5 +1,5 @@
 from pyg_cell import cell, cell_output, cell_item, cell_inputs, cell_func
-from pyg_base import dictattr, dt, getargspec, passthru, add_, get_cache
+from pyg_base import dictattr, dt, getargspec, passthru, add_, get_cache, dictable
 import pytest
 
 _updated = 'updated'
@@ -201,5 +201,15 @@ def test_cell_push_and_updated():
     b = b.push()
     assert UPDATED == {}
 
+def test_cell_with_go_as_function():
+    self = cell(b = 2)
+    go = lambda a, b: a+b
+    assert self(go) == cell(go, b = 2)
+    assert self(go, c = 3) == cell(go, b = 2, c = 3)
 
-    
+def test_cell_with_go_as_function_and_dictable(): 
+    c = cell(b = 2)
+    rs = dictable(a = [1,2,3])
+    rs = rs(d = c(lambda a, b: a+b))
+    assert cell_item(rs.d) == [3,4,5]
+
