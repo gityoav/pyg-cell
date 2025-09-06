@@ -13,6 +13,18 @@ def test_cell():
     assert c.go().data == 2
     assert c().data == 2
     assert isinstance(c, dictattr)
+    
+def test_cell_False_go():
+    self = cell(lambda a:a+1, pk = 'key', key = 'a', a = 0)
+    self = self(go = False)
+    assert 'data' not in self.keys()
+    self = self()
+    assert self.data == 1
+    
+    self = cell(lambda a:a+1, pk = 'key', key = 'a', a = 0)
+    self = self(go = False)
+    assert self.data == 1
+    
 
 
 def test_cell_go():
