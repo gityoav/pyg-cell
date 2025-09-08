@@ -632,8 +632,8 @@ class cell(dictattr):
             return self
         if address in GRAPH:
             values = dictattr(self) / None
-            saved = GRAPH[address] 
-            self_updated = self.get(_updated)
+            saved = dictattr(GRAPH[address]/None)
+            self_updated = values.get(_updated)
             saved_updated = saved.get(_updated)
             if self_updated is None or (saved_updated is not None and saved_updated > self_updated):
                 excluded_keys = values.keys() - self._output - _updated
@@ -643,7 +643,7 @@ class cell(dictattr):
                 excluded_keys += as_list(mode)
             elif is_date(mode):
                 excluded_keys += [_id]
-            update = values - excluded_keys
+            update = saved - excluded_keys
             updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and not isinstance(v, cell) and not eq(saved[k], v)]
             self.update(update)
             if len(updated_inputs):
