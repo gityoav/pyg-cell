@@ -642,7 +642,7 @@ class cell(dictattr):
                 excluded_keys += as_list(mode)
             elif is_date(mode):
                 excluded_keys += [_id]
-            update = (saved / None) - excluded_keys
+            update = dictattr(saved) / None - excluded_keys
             updated_inputs = [k for k, v in self._inputs.items() if k in saved and v is not None and not isinstance(v, cell) and not eq(saved[k], v)]
             self.update(update)
             if len(updated_inputs):
@@ -810,6 +810,7 @@ class cell(dictattr):
         ----------
         go : int, optional
             do we want to force the calculation? The default is 0.
+            go = False: don't go!
         mode : int, optional
             The mode of loading for the parameters. The default is 0.
 
@@ -820,7 +821,7 @@ class cell(dictattr):
 
         """
         address = self._address
-        if (go!=0 or self.run()):
+        if (go is not False) and (go!=0 or self.run()):
             if callable(self.function):
                 spec = self.fullargspec
                 if spec is None: ##shouldn't happen as self.function callable
@@ -979,7 +980,7 @@ class cell(dictattr):
 
         """
         res = (self + kwargs)
-        if res.run() or (is_date(go) and self.get(_updated, go) <= go)  or (is_num(go) and go!=0):
+        if (go is not False) and (res.run() or (is_date(go) and self.get(_updated, go) <= go)  or (is_num(go) and go!=0)):
             res = res._go(go = go, mode = mode)
             address = res._address
             if address in UPDATED:
