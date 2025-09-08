@@ -503,12 +503,16 @@ class db_cell(cell):
         if address not in graph: # we load from the database
             if is_date(mode):
                 doc = _load_asof(db, kwargs, deleted = mode)
+                doc[_db] = self[_db]
+                doc.update({k:v for k,v in kwargs.items() if v is not None})
                 graph[doc._address] = doc
             else:
                 if (mode == 'if needed' and not self._needed(go)) or mode<0:
                     return self
                 try:
                     doc = _load_asof(table = db, kwargs = kwargs, deleted = False, qq = None)
+                    doc[_db] = self[_db]
+                    doc.update({k:v for k,v in kwargs.items() if v is not None})
                     graph[doc._address] = doc
                 except Exception:
                     if mode in (1, True):
